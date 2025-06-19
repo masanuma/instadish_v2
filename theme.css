@@ -1,10 +1,6 @@
+
 body {
-    background-color: #ffeadd;
-}
-h1, h2, h3, h4 {
-    font-family: 'Helvetica Neue', sans-serif;
-}
-button {
-    background-color: #4185f4 !important;
-    color: white !important;
+    background-color: #fde1cf;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
 }
