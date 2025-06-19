@@ -7,8 +7,11 @@ import uuid
 
 st.set_page_config(page_title="InstaDish V2 | 写真加工とAI提案", layout="centered")
 
-# === CSS styling
+# === Inject lang="ja" to HTML tag to suppress translation prompts
 st.markdown("""
+    <script>
+    document.documentElement.lang = "ja";
+    </script>
     <style>
     .stApp {
         background-color: #fde7dc;
@@ -33,7 +36,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# === Header with split lines
+# === Header
 st.markdown("""
 <div>
     <h1>📸 InstaDish</h1>
@@ -41,11 +44,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# === 写真アップロード ===
+# === Upload
 st.subheader("1. 写真をアップロード")
 uploaded_files = st.file_uploader("", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-# === 業態とターゲット層 ===
+# === Business type and audience
 st.subheader("2. 業態・ターゲットを選択")
 col1, col2 = st.columns(2)
 with col1:
@@ -53,7 +56,7 @@ with col1:
 with col2:
     target_group = st.selectbox("", ["インスタ好き", "観光客", "会社員", "シニア", "OL"])
 
-# === 加工処理とプレビュー ===
+# === Processing
 if uploaded_files:
     st.subheader("3. 加工とプレビュー")
     if st.button("📸 画像を加工する"):
