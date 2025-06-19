@@ -1,46 +1,27 @@
-import streamlit as st
-from PIL import Image, ImageEnhance
-import io
-import uuid
-from processor.image_edit import apply_composition_correction, apply_color_enhancement
 
+import streamlit as st
+from processor.image_edit import auto_crop_and_rotate, enhance_image
+from PIL import Image
+import io
 
 def show_layout():
-    st.markdown("""
-        <h1 style='font-size:2.2em'>📸 InstaDish | 写真加工デモ版</h1>
-        <p style='color: gray;'>飲食店向けInstagram投稿支援ツール（UI分離構成）</p>
-    """, unsafe_allow_html=True)
+    st.title("📸 InstaDish | インスタ映え画像補正")
+    st.markdown("業種やターゲットに応じた最適な補正をAIが行います。")
 
     uploaded_files = st.file_uploader("画像をアップロード", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        genre = st.selectbox("", ["カフェ", "バー", "和食", "洋食"], index=0, label_visibility="collapsed")
-    with col2:
-        target = st.selectbox("", ["インスタ好き", "観光客", "ファミリー"], index=0, label_visibility="collapsed")
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            image = Image.open(uploaded_file).convert("RGB")
+            img_bytes_io = io.BytesIO()
+            image.save(img_bytes_io, format="JPEG")
+            img_bytes = img_bytes_io.getvalue()
 
-    if st.button("画像を加工") and uploaded_files:
-        for file in uploaded_files:
-            st.subheader(f"📷 加工結果: {file.name}")
-            image = Image.open(file).convert("RGB")
+            with st.spinner("🛠️ 画像を補正しています... しばらくお待ちください"):
+                corrected_image, correction_msg = auto_crop_and_rotate(img_bytes)
+                final_image, enhancement_msg = enhance_image(corrected_image)
 
-            # 構図補正
-            corrected_image, composition_info = apply_composition_correction(image)
-            st.image(corrected_image, caption="構図補正済み", use_container_width=True)
-            st.info("🖼 構図補正の内容:\n" + composition_info)
-
-            # 色味補正
-            color_enhanced = apply_color_enhancement(corrected_image)
-            st.image(color_enhanced, caption="色味補正済み", use_container_width=True)
-            st.info("🎨 色味補正の内容:\n全体の明るさとコントラストを分析し、視認性と鮮やかさを高めるために明るさを20%、コントラストを30%、シャープネスを2倍に調整しました。\nこれにより、Instagramで映える印象的な仕上がりになっています。")
-
-            # ダウンロード
-            img_bytes = io.BytesIO()
-            color_enhanced.save(img_bytes, format="JPEG")
-            st.download_button(
-                label=f"📥 加工画像をダウンロード（{file.name}）",
-                data=img_bytes.getvalue(),
-                file_name=f"processed_{file.name}",
-                mime="image/jpeg",
-                key=str(uuid.uuid4())
-            )
+            st.success("✅ 補正完了！")
+            st.image(final_image, caption="補正後の画像", use_container_width=True)
+            st.markdown(f"🌀 **構図補正ポイント：** {correction_msg}")
+            st.markdown(f"🎨 **色味補正ポイント：** {enhancement_msg}")
