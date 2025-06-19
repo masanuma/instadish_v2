@@ -1,27 +1,56 @@
-
 import streamlit as st
-from processor.image_edit import auto_crop_and_rotate, enhance_image
+import requests
 from PIL import Image
 import io
 
+
 def show_layout():
-    st.title("📸 InstaDish | インスタ映え画像補正")
-    st.markdown("業種やターゲットに応じた最適な補正をAIが行います。")
+    st.title("\U0001F4F8 InstaDish | インスタ映え画像補正")
 
-    uploaded_files = st.file_uploader("画像をアップロード", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+    with st.container():
+        uploaded_files = st.file_uploader(
+            "",  
+            type=["jpg", "jpeg", "png"],
+            accept_multiple_files=True,
+            label_visibility="collapsed"
+        )
 
-    if uploaded_files:
-        for uploaded_file in uploaded_files:
-            image = Image.open(uploaded_file).convert("RGB")
-            img_bytes_io = io.BytesIO()
-            image.save(img_bytes_io, format="JPEG")
-            img_bytes = img_bytes_io.getvalue()
+        if uploaded_files:
+            for file in uploaded_files:
+                image_bytes = file.read()
 
-            with st.spinner("🛠️ 画像を補正しています... しばらくお待ちください"):
-                corrected_image, correction_msg = auto_crop_and_rotate(img_bytes)
-                final_image, enhancement_msg = enhance_image(corrected_image)
+                with st.spinner("AIが画像を解析・補正中です…"):
+                    result = call_external_ai_api(image_bytes)
 
-            st.success("✅ 補正完了！")
-            st.image(final_image, caption="補正後の画像", use_container_width=True)
-            st.markdown(f"🌀 **構図補正ポイント：** {correction_msg}")
-            st.markdown(f"🎨 **色味補正ポイント：** {enhancement_msg}")
+                if result:
+                    corrected_image = result.get("processed_image")
+                    explanation = result.get("explanation", "")
+
+                    if corrected_image:
+                        image_data = io.BytesIO(corrected_image)
+                        image = Image.open(image_data)
+                        st.image(image, caption="AI加工後の画像", use_container_width=True)
+
+                    if explanation:
+                        st.markdown(f"### 加工内容の説明")
+                        st.markdown(explanation)
+                else:
+                    st.error("画像の加工に失敗しました。もう一度お試しください。")
+
+
+def call_external_ai_api(image_bytes):
+    try:
+        response = requests.post(
+            "https://your-api-endpoint.com/process-image",
+            files={"file": ("image.jpg", image_bytes, "image/jpeg")}
+        )
+        if response.status_code == 200:
+            result = response.json()
+            processed_image = requests.get(result["image_url"]).content
+            return {
+                "processed_image": processed_image,
+                "explanation": result.get("explanation", "")
+            }
+    except Exception as e:
+        print("API呼び出しエラー:", e)
+    return None
