@@ -1,0 +1,10 @@
+
+streamlit>=1.35.0
+Pillow
+numpy
+torch
+opencv-python-headless
+ftfy
+regex
+tqdm
+git+https://github.com/openai/CLIP.git
