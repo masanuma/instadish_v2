@@ -1,35 +1,22 @@
-
 import streamlit as st
 from processor.image_edit import apply_composition_correction
-import io
-import uuid
 
 def show_layout():
-    st.markdown('<div class="app-container">', unsafe_allow_html=True)
+    st.markdown('<h1>📸 InstaDish | 写真加工デモ版</h1>', unsafe_allow_html=True)
+    st.caption("飲食店向けInstagram投稿支援ツール（UI分離構成）")
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### 📸 InstaDish | インスタ映え画像補正")
-    uploaded_files = st.file_uploader("", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("### 1. 写真をアップロード")
+    uploaded_files = st.file_uploader("画像を選択（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-    if uploaded_files:
+    st.markdown("### 2. 業態・ターゲットを選択")
+    col1, col2 = st.columns(2)
+    with col1:
+        business_type = st.selectbox("業態", ["和食", "洋食", "中華", "居酒屋", "バー", "エスニック", "カフェ"])
+    with col2:
+        target_audience = st.selectbox("ターゲット層", ["インスタ好き", "外国人観光客", "会社員", "シニア", "OL"])
+
+    if uploaded_files and st.button("画像を加工"):
         for file in uploaded_files:
             image_bytes = file.read()
-            corrected_image, info = apply_composition_correction(image_bytes)
-
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+            corrected_image, _ = apply_composition_correction(image_bytes)
             st.image(corrected_image, caption="構図補正後の画像", use_container_width=True)
-            st.markdown(f"<p style='color: gray'>{info}</p>", unsafe_allow_html=True)
-
-            img_bytes = io.BytesIO()
-            corrected_image.save(img_bytes, format="JPEG")
-            st.download_button(
-                label="📥 加工画像をダウンロード",
-                data=img_bytes.getvalue(),
-                file_name=f"instadish_processed_{uuid.uuid4().hex[:8]}.jpg",
-                mime="image/jpeg",
-                key=str(uuid.uuid4())
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
