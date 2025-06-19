@@ -1,8 +1,14 @@
+
 body {
-    background-color: #fde8d9 !important;
+    background-color: #fde7db;
 }
 
-h1, h2, h3 {
-    color: #333333;
-    font-family: 'Segoe UI', sans-serif;
+h1 {
+    font-size: 2rem;
+    color: #333;
+    font-weight: 700;
+}
+
+button[kind="primary"] {
+    background-color: #2f80ed;
 }
