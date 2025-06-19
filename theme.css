@@ -1,14 +1,19 @@
 
 body {
-    background-color: #fde7db;
+    background-color: #fde5d4;
 }
-
-h1 {
-    font-size: 2rem;
-    color: #333;
-    font-weight: 700;
+h1, h2, h3, h4 {
+    color: #2c2c2c;
 }
-
-button[kind="primary"] {
-    background-color: #2f80ed;
+button, .stButton>button {
+    background-color: #3385ff;
+    color: white;
+}
+@media (max-width: 768px) {
+    h1, h2, h3 {
+        font-size: 1.2em;
+    }
+    .css-1v0mbdj, .css-1aehpvj {
+        font-size: 0.9em;
+    }
 }
