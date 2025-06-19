@@ -7,22 +7,22 @@ import uuid
 
 st.set_page_config(page_title="InstaDish V2 | 写真加工とAI提案", layout="centered")
 
+# === CSS styling
 st.markdown("""
     <style>
     .stApp {
         background-color: #fde7dc;
     }
     h1 {
-        font-size: clamp(22px, 6vw, 40px);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 0.3em;
+        font-size: clamp(24px, 6vw, 36px);
+        margin-bottom: 0.2em;
+        text-align: center;
     }
-    p {
+    p.subtitle {
         font-size: clamp(14px, 3.5vw, 20px);
+        text-align: center;
         margin-top: 0;
-        margin-bottom: 1.2em;
+        margin-bottom: 1.5em;
     }
     .block-container {
         padding-top: 1rem;
@@ -33,16 +33,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# === Header with split lines
 st.markdown("""
-<div style='text-align: center;'>
-    <h1>📸 InstaDish | 写真加工デモ版</h1>
-    <p>飲食店向けInstagram投稿支援ツール（UIデモ版）</p>
+<div>
+    <h1>📸 InstaDish</h1>
+    <p class="subtitle">写真加工デモ版（飲食店向けInstagram投稿支援ツール）</p>
 </div>
 """, unsafe_allow_html=True)
 
+# === 写真アップロード ===
 st.subheader("1. 写真をアップロード")
 uploaded_files = st.file_uploader("", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
+# === 業態とターゲット層 ===
 st.subheader("2. 業態・ターゲットを選択")
 col1, col2 = st.columns(2)
 with col1:
@@ -50,6 +53,7 @@ with col1:
 with col2:
     target_group = st.selectbox("", ["インスタ好き", "観光客", "会社員", "シニア", "OL"])
 
+# === 加工処理とプレビュー ===
 if uploaded_files:
     st.subheader("3. 加工とプレビュー")
     if st.button("📸 画像を加工する"):
