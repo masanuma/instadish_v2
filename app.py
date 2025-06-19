@@ -7,20 +7,35 @@ import uuid
 
 st.set_page_config(page_title="InstaDish V2 | 写真加工とAI提案", layout="centered")
 
-# === CSS: stAppで背景色を設定 ===
+# === レスポンシブフォントCSS (.stApp に背景色 + vw単位の文字サイズ)
 st.markdown("""
     <style>
     .stApp {
         background-color: #fde7dc;
+    }
+    h1 {
+        font-size: 7vw;
+        margin-bottom: 0.3em;
+    }
+    p {
+        font-size: 3.5vw;
+        margin-top: 0;
+        margin-bottom: 1.2em;
+    }
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # === ヘッダー ===
 st.markdown("""
-<div style='text-align: center; margin-bottom: 1.5rem;'>
-    <h1 style='margin-bottom: 0.2rem;'>📸 InstaDish | 写真加工デモ版</h1>
-    <p style='color: #555;'>飲食店向けInstagram投稿支援ツール（UIデモ版）</p>
+<div style='text-align: center;'>
+    <h1>📸 InstaDish | 写真加工デモ版</h1>
+    <p>飲食店向けInstagram投稿支援ツール（UIデモ版）</p>
 </div>
 """, unsafe_allow_html=True)
 
