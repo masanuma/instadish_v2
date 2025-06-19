@@ -32,7 +32,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# === ヘッダー ===
+# === ヘッダー（カード無し） ===
 st.markdown("""
 <div style='text-align: center; margin-bottom: 1.5rem;'>
     <h1 style='margin-bottom: 0.2rem;'>📸 InstaDish | 写真加工デモ版</h1>
