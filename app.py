@@ -1,3 +1,4 @@
+
 import streamlit as st
 from processor import process_image
 from PIL import Image
@@ -6,33 +7,19 @@ import uuid
 
 st.set_page_config(page_title="InstaDish V2 | 写真加工とAI提案", layout="centered")
 
-# === 背景と全体スタイル設定 ===
-st.markdown(
-    """
+# === 背景色ラッパーで囲う ===
+st.markdown("""
     <style>
-    body {
+    .app-wrapper {
         background-color: #fde7dc;
-    }
-    .block-container {
-        padding-top: 0rem;
-        padding-bottom: 1rem;
-    }
-    .stTextInput, .stSelectbox, .stButton, .stFileUploader {
-        margin-bottom: 0.5rem !important;
-    }
-    .card {
-        background-color: white;
-        border-radius: 20px;
-        padding: 1.2rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        margin-bottom: 1rem;
+        padding: 2rem;
+        border-radius: 1rem;
     }
     </style>
-    """,
-    unsafe_allow_html=True
-)
+    <div class="app-wrapper">
+""", unsafe_allow_html=True)
 
-# === ヘッダー（カード無し） ===
+# === ヘッダー ===
 st.markdown("""
 <div style='text-align: center; margin-bottom: 1.5rem;'>
     <h1 style='margin-bottom: 0.2rem;'>📸 InstaDish | 写真加工デモ版</h1>
@@ -41,24 +28,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # === 写真アップロード ===
-st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.subheader("1. 写真をアップロード")
 uploaded_files = st.file_uploader("", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-st.markdown("</div>", unsafe_allow_html=True)
 
 # === 業態とターゲット層 ===
-st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.subheader("2. 業態・ターゲットを選択")
 col1, col2 = st.columns(2)
 with col1:
     business_type = st.selectbox("", ["バー", "カフェ", "居酒屋", "和食", "洋食", "中華"])
 with col2:
     target_group = st.selectbox("", ["インスタ好き", "観光客", "会社員", "シニア", "OL"])
-st.markdown("</div>", unsafe_allow_html=True)
 
 # === 加工処理とプレビュー ===
 if uploaded_files:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("3. 加工とプレビュー")
     if st.button("📸 画像を加工する"):
         for file in uploaded_files:
@@ -78,4 +60,6 @@ if uploaded_files:
                 mime="image/jpeg",
                 key=str(uuid.uuid4())
             )
-    st.markdown("</div>", unsafe_allow_html=True)
+
+# ラッパー閉じタグ
+st.markdown("</div>", unsafe_allow_html=True)
