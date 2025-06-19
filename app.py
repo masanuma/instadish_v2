@@ -11,11 +11,11 @@ st.markdown(
     """
     <style>
     body {
-        background-color: #f8f4ee;
+        background-color: #fde7dc;
     }
     .block-container {
-        padding-top: 1rem;
-        padding-bottom: 2rem;
+        padding-top: 0rem;
+        padding-bottom: 1rem;
     }
     .stTextInput, .stSelectbox, .stButton, .stFileUploader {
         margin-bottom: 0.5rem !important;
@@ -25,28 +25,25 @@ st.markdown(
         border-radius: 20px;
         padding: 1.2rem;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        margin-bottom: 1.5rem;
-    }
-    .small-space {
-        margin-top: -10px;
-        margin-bottom: -5px;
+        margin-bottom: 1rem;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.title("📸 InstaDish | 写真加工デモ版")
-st.caption("飲食店向けInstagram投稿支援ツール（UIデモ版）")
-st.markdown("</div>", unsafe_allow_html=True)
+# === ヘッダー ===
+st.markdown("""
+<div style='text-align: center; margin-bottom: 1.5rem;'>
+    <h1 style='margin-bottom: 0.2rem;'>📸 InstaDish | 写真加工デモ版</h1>
+    <p style='color: #555;'>飲食店向けInstagram投稿支援ツール（UIデモ版）</p>
+</div>
+""", unsafe_allow_html=True)
 
 # === 写真アップロード ===
 st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.subheader("1. 写真をアップロード")
-uploaded_files = st.file_uploader(
-    "画像を選択（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True
-)
+uploaded_files = st.file_uploader("", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 # === 業態とターゲット層 ===
@@ -54,9 +51,9 @@ st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.subheader("2. 業態・ターゲットを選択")
 col1, col2 = st.columns(2)
 with col1:
-    business_type = st.selectbox("業態", ["バー", "カフェ", "居酒屋", "和食", "洋食", "中華"])
+    business_type = st.selectbox("", ["バー", "カフェ", "居酒屋", "和食", "洋食", "中華"])
 with col2:
-    target_group = st.selectbox("ターゲット層", ["インスタ好き", "観光客", "会社員", "シニア", "OL"])
+    target_group = st.selectbox("", ["インスタ好き", "観光客", "会社員", "シニア", "OL"])
 st.markdown("</div>", unsafe_allow_html=True)
 
 # === 加工処理とプレビュー ===
