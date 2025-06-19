@@ -1,76 +1,84 @@
-# app.py（修正後）
-
 import streamlit as st
-from PIL import Image, ImageEnhance
+from processor import process_image
+from PIL import Image
 import io
 import uuid
-from processor import process_image
 
-st.set_page_config(page_title="InstaDish | 写真加工デモ", layout="centered")
-st.markdown("""
+st.set_page_config(page_title="InstaDish V2 | 写真加工とAI提案", layout="centered")
+
+# === 背景と全体スタイル設定 ===
+st.markdown(
+    """
     <style>
-        .main {
-            background-color: #f9f9f9;
-        }
-        .section {
-            background-color: white;
-            padding: 1rem;
-            border-radius: 1rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .section h3 {
-            margin-bottom: 0.5rem;
-        }
-        .upload-block, .business-block, .action-block {
-            margin-bottom: 1rem;
-        }
+    body {
+        background-color: #f8f4ee;
+    }
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 2rem;
+    }
+    .stTextInput, .stSelectbox, .stButton, .stFileUploader {
+        margin-bottom: 0.5rem !important;
+    }
+    .card {
+        background-color: white;
+        border-radius: 20px;
+        padding: 1.2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1.5rem;
+    }
+    .small-space {
+        margin-top: -10px;
+        margin-bottom: -5px;
+    }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-st.markdown("<div class='section'>", unsafe_allow_html=True)
+st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.title("📸 InstaDish | 写真加工デモ版")
-st.markdown("写真をアップロードし、ジャンルを選んでから加工を行ってください。")
+st.caption("飲食店向けInstagram投稿支援ツール（UIデモ版）")
 st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<div class='section'>", unsafe_allow_html=True)
-st.markdown("<h3>1. 写真をアップロード</h3>", unsafe_allow_html=True)
-uploaded_files = st.file_uploader("画像を選択（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+# === 写真アップロード ===
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.subheader("1. 写真をアップロード")
+uploaded_files = st.file_uploader(
+    "画像を選択（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True
+)
 st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<div class='section'>", unsafe_allow_html=True)
-st.markdown("<h3>2. 業態・ターゲット選択</h3>", unsafe_allow_html=True)
-business_type = st.selectbox("業態", ["和食", "洋食", "中華", "居酒屋", "バー", "カフェ", "エスニック"])
-target_audience = st.selectbox("ターゲット層", ["インスタ好き", "外国人観光客", "会社員", "シニア", "OL"])
+# === 業態とターゲット層 ===
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.subheader("2. 業態・ターゲットを選択")
+col1, col2 = st.columns(2)
+with col1:
+    business_type = st.selectbox("業態", ["バー", "カフェ", "居酒屋", "和食", "洋食", "中華"])
+with col2:
+    target_group = st.selectbox("ターゲット層", ["インスタ好き", "観光客", "会社員", "シニア", "OL"])
 st.markdown("</div>", unsafe_allow_html=True)
 
-# ジャンル選択用セクションをここに追加
-st.markdown("<div class='section'>", unsafe_allow_html=True)
-st.markdown("<h3>3. ジャンル選択（AI未使用時）</h3>", unsafe_allow_html=True)
-category = st.selectbox("ジャンルを選んでください", ["ドリンク", "料理", "スイーツ", "店舗内装", "看板", "その他"])
-st.markdown("</div>", unsafe_allow_html=True)
+# === 加工処理とプレビュー ===
+if uploaded_files:
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.subheader("3. 加工とプレビュー")
+    if st.button("📸 画像を加工する"):
+        for file in uploaded_files:
+            img = Image.open(file).convert("RGB")
+            st.image(img, caption=f"元の画像: {file.name}", use_container_width=True)
 
-st.markdown("<div class='section'>", unsafe_allow_html=True)
-st.markdown("<h3>4. 加工開始</h3>", unsafe_allow_html=True)
-if uploaded_files and st.button("📸 加工する"):
-    for file in uploaded_files:
-        img = Image.open(file).convert("RGB")
-        st.image(img, caption=f"元の画像: {file.name}", use_container_width=True)
+            processed = process_image(img)
+            st.image(processed, caption="加工済み画像", use_container_width=True)
 
-        processed = process_image(img)
-        st.image(processed, caption="加工済み画像", use_container_width=True)
+            img_bytes = io.BytesIO()
+            processed.save(img_bytes, format="JPEG")
 
-        img_bytes = io.BytesIO()
-        processed.save(img_bytes, format="JPEG")
-
-        st.download_button(
-            label=f"📥 加工画像をダウンロード（{file.name}）",
-            data=img_bytes.getvalue(),
-            file_name=f"processed_{file.name}",
-            mime="image/jpeg",
-            key=str(uuid.uuid4())
-        )
-st.markdown("</div>", unsafe_allow_html=True)
-
-if not uploaded_files:
-    st.info("まず画像をアップロードしてください。")
+            st.download_button(
+                label=f"📥 加工画像をダウンロード（{file.name}）",
+                data=img_bytes.getvalue(),
+                file_name=f"processed_{file.name}",
+                mime="image/jpeg",
+                key=str(uuid.uuid4())
+            )
+    st.markdown("</div>", unsafe_allow_html=True)
