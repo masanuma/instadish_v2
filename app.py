@@ -7,16 +7,13 @@ import uuid
 
 st.set_page_config(page_title="InstaDish V2 | 写真加工とAI提案", layout="centered")
 
-# === 背景色ラッパーで囲う ===
+# === CSS: stAppで背景色を設定 ===
 st.markdown("""
     <style>
-    .app-wrapper {
+    .stApp {
         background-color: #fde7dc;
-        padding: 2rem;
-        border-radius: 1rem;
     }
     </style>
-    <div class="app-wrapper">
 """, unsafe_allow_html=True)
 
 # === ヘッダー ===
@@ -60,6 +57,3 @@ if uploaded_files:
                 mime="image/jpeg",
                 key=str(uuid.uuid4())
             )
-
-# ラッパー閉じタグ
-st.markdown("</div>", unsafe_allow_html=True)
