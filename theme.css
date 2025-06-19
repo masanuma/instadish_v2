@@ -1,6 +1,8 @@
-
 body {
-    background-color: #fde1cf !important;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #333;
+    background-color: #fde8d9 !important;
+}
+
+h1, h2, h3 {
+    color: #333333;
+    font-family: 'Segoe UI', sans-serif;
 }
