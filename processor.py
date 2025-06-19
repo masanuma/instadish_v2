@@ -1,4 +1,3 @@
-
 from PIL import ImageEnhance
 
 def process_image(image):
