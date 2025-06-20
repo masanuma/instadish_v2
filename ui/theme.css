@@ -1,20 +1,318 @@
+/* モバイルファーストのレスポンシブデザイン */
+* {
+    box-sizing: border-box;
+}
+
 body {
     background-color: #fdf4f4;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
+/* メインコンテナ */
 section.main > div {
-    padding: 1rem;
+    padding: 0.5rem;
+    max-width: 100%;
 }
 
+/* タイトル */
 h1 {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
+    text-align: center;
+    margin: 1rem 0;
+    color: #333;
+    font-weight: 700;
 }
 
+h2 {
+    font-size: 1.2rem;
+    margin: 0.8rem 0;
+    color: #444;
+}
+
+h3 {
+    font-size: 1rem;
+    margin: 0.6rem 0;
+    color: #555;
+}
+
+/* ボタンスタイル */
 .stButton > button {
     background-color: #ff6666;
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
     font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(255, 102, 102, 0.3);
+    width: 100%;
+    max-width: 300px;
+    margin: 0.5rem auto;
+    display: block;
+}
+
+.stButton > button:hover {
+    background-color: #ff5252;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 102, 102, 0.4);
+}
+
+.stButton > button:active {
+    transform: translateY(0);
+}
+
+/* プライマリボタン */
+.stButton > button[data-baseweb="button"] {
+    background-color: #ff6666;
+}
+
+/* セレクトボックス */
+.stSelectbox > div > div {
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    background-color: white;
+}
+
+.stSelectbox > div > div:hover {
+    border-color: #ff6666;
+}
+
+/* スライダー */
+.stSlider > div > div > div > div {
+    background-color: #ff6666;
+}
+
+.stSlider > div > div > div > div > div {
+    background-color: #ff6666;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ファイルアップローダー */
+.stFileUploader > div {
+    border: 2px dashed #ff6666;
+    border-radius: 12px;
+    background-color: rgba(255, 102, 102, 0.05);
+    padding: 2rem 1rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stFileUploader > div:hover {
+    border-color: #ff5252;
+    background-color: rgba(255, 102, 102, 0.1);
+}
+
+/* 画像表示 */
+.stImage > img {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.stImage > img:hover {
+    transform: scale(1.02);
+}
+
+/* サイドバー */
+.sidebar .sidebar-content {
+    background-color: white;
+    border-right: 1px solid #e0e0e0;
+    padding: 1rem;
+}
+
+/* カードスタイル */
+.stMarkdown {
+    background-color: white;
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* プログレスバー */
+.stProgress > div > div > div {
+    background-color: #ff6666;
+    border-radius: 8px;
+}
+
+/* メトリクス */
+.stMetric > div > div {
+    background-color: white;
+    border-radius: 8px;
+    padding: 0.5rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* アラート・メッセージ */
+.stAlert {
+    border-radius: 8px;
+    border: none;
+    padding: 1rem;
+    margin: 0.5rem 0;
+}
+
+/* スピナー */
+.stSpinner > div {
+    border-color: #ff6666;
+}
+
+/* モバイル最適化 */
+@media (max-width: 768px) {
+    section.main > div {
+        padding: 0.25rem;
+    }
+    
+    h1 {
+        font-size: 1.3rem;
+        margin: 0.5rem 0;
+    }
+    
+    h2 {
+        font-size: 1.1rem;
+        margin: 0.5rem 0;
+    }
+    
+    h3 {
+        font-size: 0.9rem;
+        margin: 0.4rem 0;
+    }
+    
+    .stButton > button {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+    }
+    
+    .stFileUploader > div {
+        padding: 1.5rem 0.5rem;
+        border-radius: 10px;
+    }
+    
+    .stMarkdown {
+        padding: 0.8rem;
+        margin: 0.3rem 0;
+        border-radius: 10px;
+    }
+    
+    /* サイドバーをモバイルで最適化 */
+    .sidebar .sidebar-content {
+        padding: 0.5rem;
+    }
+    
+    /* 画像をモバイルで最適化 */
+    .stImage > img {
+        border-radius: 8px;
+    }
+}
+
+/* タブレット対応 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    section.main > div {
+        padding: 0.75rem;
+    }
+    
+    h1 {
+        font-size: 1.4rem;
+    }
+    
+    .stButton > button {
+        max-width: 250px;
+    }
+}
+
+/* デスクトップ対応 */
+@media (min-width: 1025px) {
+    section.main > div {
+        padding: 1rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    .stButton > button {
+        max-width: 300px;
+    }
+}
+
+/* PWA対応 */
+@media (display-mode: standalone) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #ffffff;
+    }
+    
+    .stMarkdown {
+        background-color: #2d2d2d;
+        color: #ffffff;
+    }
+    
+    .sidebar .sidebar-content {
+        background-color: #2d2d2d;
+        color: #ffffff;
+    }
+    
+    h1, h2, h3 {
+        color: #ffffff;
+    }
+}
+
+/* アクセシビリティ対応 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* タッチデバイス最適化 */
+@media (hover: none) and (pointer: coarse) {
+    .stButton > button {
+        min-height: 44px;
+        padding: 1rem 1.5rem;
+    }
+    
+    .stSelectbox > div > div {
+        min-height: 44px;
+    }
+    
+    .stSlider > div > div > div > div > div {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+/* 印刷対応 */
+@media print {
+    .sidebar,
+    .stButton,
+    .stFileUploader {
+        display: none !important;
+    }
+    
+    body {
+        background-color: white !important;
+        color: black !important;
+    }
 }
