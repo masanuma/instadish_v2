@@ -117,11 +117,24 @@ export default function Home() {
         })()
         setProcessingDetails(effectDetails)
       } else {
-        alert('AI処理でエラーが発生しました')
+        // APIからの詳細エラー情報を取得して表示
+        try {
+          const errorData = await response.json()
+          const errorMessage = errorData.error || 'AI処理でエラーが発生しました'
+          const errorDetails = errorData.details ? `\n詳細: ${errorData.details}` : ''
+          const timestamp = errorData.timestamp ? `\n時刻: ${new Date(errorData.timestamp).toLocaleString()}` : ''
+          alert(`${errorMessage}${errorDetails}${timestamp}`)
+        } catch {
+          alert(`AI処理でエラーが発生しました (HTTP ${response.status})`)
+        }
       }
     } catch (error) {
       console.error('AI処理エラー:', error)
-      alert('AI処理でエラーが発生しました')
+      if (error instanceof Error) {
+        alert(`ネットワークエラーが発生しました: ${error.message}`)
+      } else {
+        alert('AI処理でエラーが発生しました。ネットワーク接続を確認してください。')
+      }
     } finally {
       setIsProcessing(false)
     }
