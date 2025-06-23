@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-// OpenAI クライアントの初期化
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+// ビルド時の事前レンダリングを無効にする
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+// OpenAIクライアントを安全に初期化する関数
+function createOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured')
+  }
+  return new OpenAI({ apiKey })
+}
 
 // 業種別のプロンプト設定
 const BUSINESS_PROMPTS = {
@@ -51,6 +59,14 @@ const EFFECT_PROMPTS = {
 
 export async function POST(request: NextRequest) {
   try {
+    // 最初にAPIキーの存在を確認
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API キーが設定されていません' },
+        { status: 500 }
+      )
+    }
+
     const { image, businessType, effectStrength } = await request.json()
     
     if (!image || !businessType || !effectStrength) {
@@ -60,12 +76,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API キーが設定されていません' },
-        { status: 500 }
-      )
-    }
+    // OpenAI クライアントの初期化（実行時）
+    const openai = createOpenAIClient()
 
     // 1. 画像解析（料理の種類・特徴を分析）
     const analysisResponse = await openai.chat.completions.create({
@@ -175,8 +187,8 @@ export async function POST(request: NextRequest) {
 
     const hashtagsText = hashtagResponse.choices[0]?.message?.content || ''
     const hashtags = hashtagsText.split('\n')
-      .filter(tag => tag.trim())
-      .map(tag => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
+      .filter((tag: string) => tag.trim())
+      .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
       .slice(0, 10)
 
     // 5. 撮影アドバイス生成
