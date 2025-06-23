@@ -64,7 +64,11 @@ export async function POST(request: NextRequest) {
     // 最初にAPIキーの存在を確認
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: 'OpenAI API キーが設定されていません' },
+        { 
+          error: 'OpenAI API キーが設定されていません',
+          details: 'サーバー管理者にお問い合わせください',
+          timestamp: new Date().toISOString()
+        },
         { status: 500 }
       )
     }
@@ -72,8 +76,17 @@ export async function POST(request: NextRequest) {
     const { image, businessType, effectStrength } = await request.json()
     
     if (!image || !businessType || !effectStrength) {
+      const missingParams = []
+      if (!image) missingParams.push('image')
+      if (!businessType) missingParams.push('businessType')
+      if (!effectStrength) missingParams.push('effectStrength')
+      
       return NextResponse.json(
-        { error: '必要なパラメータが不足しています' },
+        { 
+          error: '必要なパラメータが不足しています',
+          missingParams,
+          timestamp: new Date().toISOString()
+        },
         { status: 400 }
       )
     }
@@ -238,12 +251,31 @@ export async function POST(request: NextRequest) {
     console.error('AI処理エラー:', error)
     
     // エラーの詳細をログに出力
+    let errorMessage = 'AI処理でエラーが発生しました。'
+    let errorDetails = ''
+    
     if (error instanceof Error) {
       console.error('エラーメッセージ:', error.message)
+      errorDetails = error.message
+      
+      // 具体的なエラータイプに応じたメッセージ
+      if (error.message.includes('API key')) {
+        errorMessage = 'OpenAI APIキーの設定に問題があります。'
+      } else if (error.message.includes('quota')) {
+        errorMessage = 'OpenAI APIの利用制限に達しています。'
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = 'リクエストが多すぎます。しばらく時間をおいて再試行してください。'
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。'
+      }
     }
     
     return NextResponse.json(
-      { error: 'AI処理でエラーが発生しました。しばらく時間をおいて再試行してください。' },
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }
