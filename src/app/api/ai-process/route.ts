@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
 
 // ビルド時の事前レンダリングを無効にする
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-// OpenAIクライアントを安全に初期化する関数
-function createOpenAIClient() {
+// OpenAIクライアントを動的にインポートして初期化する関数
+async function createOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not configured')
   }
+  
+  // OpenAIを動的にインポート（ビルド時には実行されない）
+  const { default: OpenAI } = await import('openai')
   return new OpenAI({ apiKey })
 }
 
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // OpenAI クライアントの初期化（実行時）
-    const openai = createOpenAIClient()
+    const openai = await createOpenAIClient()
 
     // 1. 画像解析（料理の種類・特徴を分析）
     const analysisResponse = await openai.chat.completions.create({
