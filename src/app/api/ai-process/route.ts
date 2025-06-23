@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { image, businessType, effectStrength } = await request.json()
+    const { image, businessType, effectStrength, regenerateCaption, regenerateHashtags } = await request.json()
     
     if (!image || !businessType || !effectStrength) {
       const missingParams = []
@@ -94,38 +94,125 @@ export async function POST(request: NextRequest) {
     // OpenAI クライアントの初期化（実行時）
     const openai = await createOpenAIClient()
 
-    // 1. 画像解析（料理の種類・特徴を分析）
-    const analysisResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `この写真を詳しく分析してください。以下の情報を教えてください：
-              1. 料理名（推定）
-              2. 主な食材・特徴
-              3. 見た目の印象（色合い、盛り付け、量など）
-              4. 美味しそうなポイント
-              5. どんな業種の店に合いそうか
-              
-              日本語で簡潔に答えてください。`
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: image
+    // 再生成の場合は画像解析をスキップ
+    let imageAnalysis = ''
+    if (!regenerateCaption && !regenerateHashtags) {
+      // 1. 画像解析（料理の種類・特徴を分析）
+      const analysisResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `この写真を詳しく分析してください。以下の情報を教えてください：
+                1. 料理名（推定）
+                2. 主な食材・特徴
+                3. 見た目の印象（色合い、盛り付け、量など）
+                4. 美味しそうなポイント
+                5. どんな業種の店に合いそうか
+                
+                日本語で簡潔に答えてください。`
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: image
+                }
               }
-            }
-          ]
-        }
-      ],
-      max_tokens: 500
-    })
+            ]
+          }
+        ],
+        max_tokens: 500
+      })
 
-    const imageAnalysis = analysisResponse.choices[0]?.message?.content || ''
+      imageAnalysis = analysisResponse.choices[0]?.message?.content || ''
+    } else {
+      // 再生成の場合は簡易的な分析テキストを使用
+      imageAnalysis = `${businessType}の美味しそうな料理写真`
+    }
 
+    // 再生成の場合は必要な部分のみ実行
+    if (regenerateCaption) {
+      // キャプション再生成のみ
+      const businessPrompt = BUSINESS_PROMPTS[businessType as keyof typeof BUSINESS_PROMPTS]
+      const captionResponse = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: `あなたは${businessPrompt.style}な${businessType}の店舗SNS担当者です。集客効果の高い魅力的な投稿文を作成してください。`
+          },
+          {
+            role: "user",
+            content: `${businessPrompt.caption}。
+
+画像分析結果：${imageAnalysis}
+
+以下の条件で200文字以内のキャプションを作成してください：
+- 集客につながる魅力的な表現
+- ${businessPrompt.style}な雰囲気
+- 食欲をそそる表現
+- 親しみやすい文体
+- 絵文字を2-3個程度使用
+- 前回とは違う表現で作成`
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.9 // 再生成時は温度を上げてバリエーションを増やす
+      })
+
+      const caption = captionResponse.choices[0]?.message?.content || ''
+
+      return NextResponse.json({
+        success: true,
+        caption: caption.trim()
+      })
+    }
+
+    if (regenerateHashtags) {
+      // ハッシュタグ再生成のみ
+      const hashtagResponse = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "あなたはSNSマーケティングの専門家です。効果的なハッシュタグを生成してください。"
+          },
+          {
+            role: "user",
+            content: `${businessType}の料理写真用に効果的なハッシュタグを10個生成してください。
+
+画像分析：${imageAnalysis}
+業種：${businessType}
+
+条件：
+- 日本語と英語を混在させる
+- インスタ映えを狙った人気ハッシュタグを含める
+- 業種特有のハッシュタグを含める
+- 料理に関連するハッシュタグを含める
+- #マークは付けずに、改行区切りで出力
+- 前回とは違うバリエーションで作成`
+          }
+        ],
+        max_tokens: 200,
+        temperature: 0.9 // 再生成時は温度を上げてバリエーションを増やす
+      })
+
+      const hashtagsText = hashtagResponse.choices[0]?.message?.content || ''
+      const hashtags = hashtagsText.split('\n')
+        .filter((tag: string) => tag.trim())
+        .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
+        .slice(0, 10)
+
+      return NextResponse.json({
+        success: true,
+        hashtags
+      })
+    }
+
+    // 通常の全体処理
     // 2. 画像加工（エフェクト強度に応じた調整）
     // 現在は元画像を返しているが、実際の加工内容を説明
     const processedImage = image // 暫定的に元画像をそのまま使用

@@ -158,6 +158,86 @@ export default function Home() {
     }
   }
 
+  // キャプション再生成
+  const regenerateCaption = async () => {
+    if (!selectedImage) return
+    
+    setIsProcessing(true)
+    
+    try {
+      const response = await fetch('/api/ai-process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: selectedImage,
+          businessType,
+          effectStrength,
+          regenerateCaption: true
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setCaption(result.caption)
+      } else {
+        try {
+          const errorData = await response.json()
+          const errorMessage = errorData.error || 'キャプション再生成でエラーが発生しました'
+          alert(errorMessage)
+        } catch {
+          alert(`キャプション再生成でエラーが発生しました (HTTP ${response.status})`)
+        }
+      }
+    } catch (error) {
+      console.error('キャプション再生成エラー:', error)
+      alert('キャプション再生成でエラーが発生しました。')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // ハッシュタグ再生成
+  const regenerateHashtags = async () => {
+    if (!selectedImage) return
+    
+    setIsProcessing(true)
+    
+    try {
+      const response = await fetch('/api/ai-process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: selectedImage,
+          businessType,
+          effectStrength,
+          regenerateHashtags: true
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setHashtags(result.hashtags.join('\n'))
+      } else {
+        try {
+          const errorData = await response.json()
+          const errorMessage = errorData.error || 'ハッシュタグ再生成でエラーが発生しました'
+          alert(errorMessage)
+        } catch {
+          alert(`ハッシュタグ再生成でエラーが発生しました (HTTP ${response.status})`)
+        }
+      }
+    } catch (error) {
+      console.error('ハッシュタグ再生成エラー:', error)
+      alert('ハッシュタグ再生成でエラーが発生しました。')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
@@ -310,20 +390,30 @@ export default function Home() {
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h2 className="text-lg sm:text-xl font-semibold">📝 生成されたキャプション</h2>
-                    <button
-                      onClick={copyCaption}
-                      className="bg-blue-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-blue-600 transition-colors"
-                    >
-                      コピー
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={regenerateCaption}
+                        disabled={isProcessing}
+                        className="bg-purple-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-purple-600 transition-colors disabled:opacity-50"
+                      >
+                        🔄 再生成
+                      </button>
+                      <button
+                        onClick={copyCaption}
+                        className="bg-blue-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-blue-600 transition-colors"
+                      >
+                        📋 コピー
+                      </button>
+                    </div>
                   </div>
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                     <textarea
                       value={caption}
                       onChange={(e) => setCaption(e.target.value)}
                       className="w-full h-24 sm:h-32 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                      placeholder="キャプションが生成されます..."
+                      placeholder="キャプションを編集できます..."
                     />
+                    <p className="text-xs text-gray-500 mt-2">✏️ 自由に編集してからコピーできます</p>
                   </div>
                 </div>
               )}
@@ -333,20 +423,30 @@ export default function Home() {
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h2 className="text-lg sm:text-xl font-semibold">#️⃣ おすすめハッシュタグ</h2>
-                    <button
-                      onClick={copyHashtags}
-                      className="bg-green-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-green-600 transition-colors"
-                    >
-                      コピー
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={regenerateHashtags}
+                        disabled={isProcessing}
+                        className="bg-purple-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-purple-600 transition-colors disabled:opacity-50"
+                      >
+                        🔄 再生成
+                      </button>
+                      <button
+                        onClick={copyHashtags}
+                        className="bg-green-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-green-600 transition-colors"
+                      >
+                        📋 コピー
+                      </button>
+                    </div>
                   </div>
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                     <textarea
                       value={hashtags}
                       onChange={(e) => setHashtags(e.target.value)}
                       className="w-full h-36 sm:h-48 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-xs sm:text-sm"
-                      placeholder="ハッシュタグが生成されます..."
+                      placeholder="ハッシュタグを編集できます..."
                     />
+                    <p className="text-xs text-gray-500 mt-2">✏️ 自由に編集してからコピーできます</p>
                   </div>
                 </div>
               )}
