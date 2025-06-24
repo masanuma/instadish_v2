@@ -33,6 +33,7 @@ export default function Home() {
   const [processingDetails, setProcessingDetails] = useState<string>('')
   const [photographyAdvice, setPhotographyAdvice] = useState<string>('')
   const [imageEffects, setImageEffects] = useState<string>('')
+  const [downloadUrl, setDownloadUrl] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ページ読み込み時に保存された設定を復元
@@ -73,6 +74,7 @@ export default function Home() {
         setProcessingDetails('')
         setPhotographyAdvice('')
         setImageEffects('')
+        setDownloadUrl('')
       }
       reader.readAsDataURL(file)
     }
@@ -105,20 +107,22 @@ export default function Home() {
         setPhotographyAdvice(result.photographyAdvice || '')
         setImageEffects(result.imageEffects || '')
         
-        // エフェクト強度に応じた加工詳細を設定
-        const effectDetails = (() => {
-          switch (result.effectStrength) {
-            case 'weak':
-              return '軽微な調整: 明度+5%, 彩度+3%, コントラスト+2% - 自然な美味しさを保持'
-            case 'normal':
-              return '標準調整: 明度+10%, 彩度+8%, コントラスト+5%, 暖色調+3% - バランスの良い食欲増進効果'
-            case 'strong':
-              return '強力調整: 明度+15%, 彩度+15%, コントラスト+10%, 暖色調+8%, シャープ+5% - インパクトのある美味しさ強調'
-            default:
-              return '標準調整を適用'
-          }
-        })()
-        setProcessingDetails(effectDetails)
+        // APIから返された加工詳細を設定
+        setProcessingDetails(result.processingDetails || '画像エフェクト適用済み')
+
+        // ダウンロード用画像を生成
+        if (result.processedImage && result.imageEffects) {
+          generateDownloadImage(result.processedImage, result.imageEffects).then(downloadUrl => {
+            setDownloadUrl(downloadUrl)
+          }).catch(err => {
+            console.error('ダウンロード画像生成エラー:', err)
+            // エラーの場合は元画像をダウンロード可能にする
+            setDownloadUrl(result.processedImage)
+          })
+        } else if (result.processedImage) {
+          // エフェクト情報がない場合は元画像をダウンロード可能にする
+          setDownloadUrl(result.processedImage)
+        }
       } else {
         // APIからの詳細エラー情報を取得して表示
         try {
@@ -241,6 +245,31 @@ export default function Home() {
     }
   }
 
+  // 画像ダウンロード用のCanvas処理
+  const generateDownloadImage = (imageSrc: string, effects: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const img = new Image()
+      
+      img.onload = () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        
+        // エフェクトを適用
+        if (ctx) {
+          ctx.filter = effects || 'brightness(1.1) contrast(1.08) saturate(1.15)'
+          ctx.drawImage(img, 0, 0)
+        }
+        
+        resolve(canvas.toDataURL('image/jpeg', 0.9))
+      }
+      
+      img.crossOrigin = 'anonymous'
+      img.src = imageSrc
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
@@ -352,7 +381,7 @@ export default function Home() {
               <button
                 onClick={processWithAI}
                 disabled={!selectedImage || isProcessing}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-3 sm:px-6 sm:py-4 rounded-lg font-semibold text-base sm:text-lg hover:from-purple-700 hover:to-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-3 sm:px-6 sm:py-4 rounded-lg font-semibold text-sm sm:text-lg hover:from-purple-700 hover:to-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? '🤖 AI処理中...' : '🚀 AI加工・キャプション生成'}
               </button>
@@ -374,23 +403,34 @@ export default function Home() {
                       <img
                         src={selectedImage || ''}
                         alt="加工前の画像"
-                        className="w-full max-w-none object-cover rounded-lg shadow-sm"
-                        style={{ height: 'auto', minHeight: '200px', maxHeight: '300px' }}
+                        className="w-full max-w-none object-contain rounded-lg shadow-sm border"
+                        style={{ height: 'auto', maxHeight: '400px', backgroundColor: '#f9fafb' }}
                       />
                     </div>
                     
                     {/* After */}
                     <div>
-                      <h3 className="text-sm font-medium text-green-600 mb-2">✨ 加工後 (エフェクト適用)</h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-medium text-green-600">✨ 加工後 (エフェクト適用)</h3>
+                        {downloadUrl && (
+                          <a
+                            href={downloadUrl}
+                            download="instadish-processed-image.jpg"
+                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
+                          >
+                            📥 DL
+                          </a>
+                        )}
+                      </div>
                       <img
                         src={processedImage}
                         alt="AI加工後の画像"
-                        className="w-full max-w-none object-cover rounded-lg border-2 border-green-200 shadow-lg"
+                        className="w-full max-w-none object-contain rounded-lg border-2 border-green-200 shadow-lg"
                         style={{ 
                           height: 'auto', 
-                          minHeight: '200px', 
-                          maxHeight: '300px',
-                          filter: imageEffects || 'brightness(1.2) contrast(1.15) saturate(1.3)'
+                          maxHeight: '400px',
+                          backgroundColor: '#f9fafb',
+                          filter: imageEffects || 'brightness(1.1) contrast(1.08) saturate(1.15)'
                         }}
                       />
                     </div>
@@ -419,17 +459,17 @@ export default function Home() {
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h2 className="text-lg sm:text-xl font-semibold">📝 生成されたキャプション</h2>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                       <button
                         onClick={regenerateCaption}
                         disabled={isProcessing}
-                        className="bg-purple-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-purple-600 transition-colors disabled:opacity-50"
+                        className="bg-purple-500 text-white px-2 py-1 sm:px-3 sm:py-2 rounded text-xs sm:text-sm hover:bg-purple-600 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         🔄 再生成
                       </button>
                       <button
                         onClick={copyCaption}
-                        className="bg-blue-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-blue-600 transition-colors"
+                        className="bg-blue-500 text-white px-2 py-1 sm:px-3 sm:py-2 rounded text-xs sm:text-sm hover:bg-blue-600 transition-colors whitespace-nowrap"
                       >
                         📋 コピー
                       </button>
@@ -452,17 +492,17 @@ export default function Home() {
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h2 className="text-lg sm:text-xl font-semibold">#️⃣ おすすめハッシュタグ</h2>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                       <button
                         onClick={regenerateHashtags}
                         disabled={isProcessing}
-                        className="bg-purple-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-purple-600 transition-colors disabled:opacity-50"
+                        className="bg-purple-500 text-white px-2 py-1 sm:px-3 sm:py-2 rounded text-xs sm:text-sm hover:bg-purple-600 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
                         🔄 再生成
                       </button>
                       <button
                         onClick={copyHashtags}
-                        className="bg-green-500 text-white px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm hover:bg-green-600 transition-colors"
+                        className="bg-green-500 text-white px-2 py-1 sm:px-3 sm:py-2 rounded text-xs sm:text-sm hover:bg-green-600 transition-colors whitespace-nowrap"
                       >
                         📋 コピー
                       </button>

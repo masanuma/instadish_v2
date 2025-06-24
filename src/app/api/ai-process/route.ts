@@ -64,22 +64,22 @@ function generateImageEffects(effectStrength: string) {
   switch (effectStrength) {
     case 'weak':
       return {
-        filter: 'brightness(1.1) contrast(1.05) saturate(1.1) hue-rotate(5deg)',
-        description: '軽微な調整: 明度+10%, 彩度+10%, コントラスト+5%, 色温度調整 - 自然な美味しさを保持'
+        filter: 'brightness(1.05) contrast(1.03) saturate(1.08) hue-rotate(2deg)',
+        description: '軽微な調整: 明度+5%, 彩度+8%, コントラスト+3% - 自然な美味しさを保持'
       }
     case 'normal':
       return {
-        filter: 'brightness(1.2) contrast(1.15) saturate(1.3) hue-rotate(8deg) sepia(0.1)',
-        description: '標準調整: 明度+20%, 彩度+30%, コントラスト+15%, 暖色調整 - バランスの良い食欲増進効果'
+        filter: 'brightness(1.1) contrast(1.08) saturate(1.15) hue-rotate(4deg)',
+        description: '標準調整: 明度+10%, 彩度+15%, コントラスト+8% - バランスの良い食欲増進効果'
       }
     case 'strong':
       return {
-        filter: 'brightness(1.3) contrast(1.25) saturate(1.5) hue-rotate(12deg) sepia(0.2) drop-shadow(0 0 3px rgba(255,100,0,0.3))',
-        description: '強力調整: 明度+30%, 彩度+50%, コントラスト+25%, 暖色調整+グロー効果 - インパクトのある美味しさ強調'
+        filter: 'brightness(1.15) contrast(1.12) saturate(1.25) hue-rotate(6deg) sepia(0.05)',
+        description: '強力調整: 明度+15%, 彩度+25%, コントラスト+12%, 暖色調整 - インパクトのある美味しさ強調'
       }
     default:
       return {
-        filter: 'brightness(1.2) contrast(1.15) saturate(1.3)',
+        filter: 'brightness(1.1) contrast(1.08) saturate(1.15)',
         description: '標準調整を適用'
       }
   }
@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
 - 食欲をそそる表現
 - 親しみやすい文体
 - 絵文字を2-3個程度使用
+- ハッシュタグは一切含めない（#マークを使わない）
 - 前回とは違う表現で作成`
           }
         ],
@@ -214,7 +215,8 @@ export async function POST(request: NextRequest) {
 業種：${businessType}
 
 条件：
-- 日本語と英語を混在させる
+- 日本語と英語を5:5の割合で混在させる
+- 英語のハッシュタグを必ず含める（例：#foodporn, #instafood, #delicious, #foodie, #tasty等）
 - インスタ映えを狙った人気ハッシュタグを含める
 - 業種特有のハッシュタグを含める
 - 料理に関連するハッシュタグを含める
@@ -268,7 +270,8 @@ export async function POST(request: NextRequest) {
 - ${businessPrompt.style}な雰囲気
 - 食欲をそそる表現
 - 親しみやすい文体
-- 絵文字を2-3個程度使用`
+- 絵文字を2-3個程度使用
+- ハッシュタグは一切含めない（#マークを使わない）`
           }
         ],
         max_tokens: 300,
@@ -291,7 +294,8 @@ export async function POST(request: NextRequest) {
 業種：${businessType}
 
 条件：
-- 日本語と英語を混在させる
+- 日本語と英語を5:5の割合で混在させる
+- 英語のハッシュタグを必ず含める（例：#foodporn, #instafood, #delicious, #foodie, #tasty等）
 - インスタ映えを狙った人気ハッシュタグを含める
 - 業種特有のハッシュタグを含める
 - 料理に関連するハッシュタグを含める
@@ -348,7 +352,8 @@ export async function POST(request: NextRequest) {
       photographyAdvice: photographyAdvice.trim(),
       businessType,
       effectStrength,
-      imageEffects: effectSettings.filter // CSSフィルター設定をフロントエンドに送信
+      imageEffects: effectSettings.filter, // CSSフィルター設定をフロントエンドに送信
+      processingDetails: imageProcessingDetails // 加工詳細説明を送信
     })
 
   } catch (error) {
