@@ -16,9 +16,9 @@ const BUSINESS_TYPES = [
 
 // エフェクト強度選択肢
 const EFFECT_STRENGTHS = [
-  { id: 'weak', name: '弱い', description: '自然な仕上がり' },
-  { id: 'normal', name: '普通', description: 'バランスの取れた加工' },
-  { id: 'strong', name: '強い', description: 'インパクトのある仕上がり' }
+  { id: 'weak', name: '弱い', description: '自然な美味しさ強調' },
+  { id: 'normal', name: '普通', description: '食欲をそそる魅力的な仕上がり' },
+  { id: 'strong', name: '強い', description: 'インパクト大！SNS映え重視' }
 ]
 
 export default function Home() {
@@ -32,6 +32,7 @@ export default function Home() {
   const [imageAnalysis, setImageAnalysis] = useState<string>('')
   const [processingDetails, setProcessingDetails] = useState<string>('')
   const [photographyAdvice, setPhotographyAdvice] = useState<string>('')
+  const [imageEffects, setImageEffects] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ページ読み込み時に保存された設定を復元
@@ -71,6 +72,7 @@ export default function Home() {
         setImageAnalysis('')
         setProcessingDetails('')
         setPhotographyAdvice('')
+        setImageEffects('')
       }
       reader.readAsDataURL(file)
     }
@@ -101,6 +103,7 @@ export default function Home() {
         setHashtags(result.hashtags.join('\n'))
         setImageAnalysis(result.analysis || '')
         setPhotographyAdvice(result.photographyAdvice || '')
+        setImageEffects(result.imageEffects || '')
         
         // エフェクト強度に応じた加工詳細を設定
         const effectDetails = (() => {
@@ -288,7 +291,8 @@ export default function Home() {
                     <img
                       src={selectedImage}
                       alt="アップロードされた画像"
-                      className="w-full h-48 sm:h-64 object-contain bg-gray-50 rounded-lg"
+                      className="w-full max-w-none object-cover rounded-lg shadow-md"
+                      style={{ height: 'auto', minHeight: '300px', maxHeight: '500px' }}
                     />
                     <button
                       onClick={() => fileInputRef.current?.click()}
@@ -361,15 +365,40 @@ export default function Home() {
               {processedImage && (
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">✨ AI加工後</h2>
-                  <img
-                    src={processedImage}
-                    alt="AI加工後の画像"
-                    className="w-full h-48 sm:h-64 object-contain bg-gray-50 rounded-lg border-2 border-green-200"
-                  />
+                  
+                  {/* Before/After表示 */}
+                  <div className="space-y-4">
+                    {/* Before */}
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-600 mb-2">📷 加工前</h3>
+                      <img
+                        src={selectedImage || ''}
+                        alt="加工前の画像"
+                        className="w-full max-w-none object-cover rounded-lg shadow-sm"
+                        style={{ height: 'auto', minHeight: '200px', maxHeight: '300px' }}
+                      />
+                    </div>
+                    
+                    {/* After */}
+                    <div>
+                      <h3 className="text-sm font-medium text-green-600 mb-2">✨ 加工後 (エフェクト適用)</h3>
+                      <img
+                        src={processedImage}
+                        alt="AI加工後の画像"
+                        className="w-full max-w-none object-cover rounded-lg border-2 border-green-200 shadow-lg"
+                        style={{ 
+                          height: 'auto', 
+                          minHeight: '200px', 
+                          maxHeight: '300px',
+                          filter: imageEffects || 'brightness(1.2) contrast(1.15) saturate(1.3)'
+                        }}
+                      />
+                    </div>
+                  </div>
                   
                   {/* 加工詳細 */}
                   {processingDetails && (
-                    <div className="mt-3 sm:mt-4 p-3 bg-green-50 rounded-lg">
+                    <div className="mt-4 p-3 bg-green-50 rounded-lg">
                       <h3 className="font-medium text-green-800 mb-2 text-sm sm:text-base">🔧 画像加工詳細</h3>
                       <p className="text-xs sm:text-sm text-green-700">{processingDetails}</p>
                     </div>

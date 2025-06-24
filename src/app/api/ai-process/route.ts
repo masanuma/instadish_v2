@@ -59,6 +59,32 @@ const EFFECT_PROMPTS = {
   strong: 'dramatic but tasteful enhancement'
 }
 
+// CSS フィルターを使用した画像処理のエフェクト生成
+function generateImageEffects(effectStrength: string) {
+  switch (effectStrength) {
+    case 'weak':
+      return {
+        filter: 'brightness(1.1) contrast(1.05) saturate(1.1) hue-rotate(5deg)',
+        description: '軽微な調整: 明度+10%, 彩度+10%, コントラスト+5%, 色温度調整 - 自然な美味しさを保持'
+      }
+    case 'normal':
+      return {
+        filter: 'brightness(1.2) contrast(1.15) saturate(1.3) hue-rotate(8deg) sepia(0.1)',
+        description: '標準調整: 明度+20%, 彩度+30%, コントラスト+15%, 暖色調整 - バランスの良い食欲増進効果'
+      }
+    case 'strong':
+      return {
+        filter: 'brightness(1.3) contrast(1.25) saturate(1.5) hue-rotate(12deg) sepia(0.2) drop-shadow(0 0 3px rgba(255,100,0,0.3))',
+        description: '強力調整: 明度+30%, 彩度+50%, コントラスト+25%, 暖色調整+グロー効果 - インパクトのある美味しさ強調'
+      }
+    default:
+      return {
+        filter: 'brightness(1.2) contrast(1.15) saturate(1.3)',
+        description: '標準調整を適用'
+      }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 最初にAPIキーの存在を確認
@@ -213,36 +239,27 @@ export async function POST(request: NextRequest) {
     }
 
     // 通常の全体処理
-    // 2. 画像加工（エフェクト強度に応じた調整）
-    // 現在は元画像を返しているが、実際の加工内容を説明
-    const processedImage = image // 暫定的に元画像をそのまま使用
-    
-    // 加工内容の説明を生成
-    const imageProcessingDetails = (() => {
-      switch (effectStrength) {
-        case 'weak':
-          return '軽微な調整: 明度+5%, 彩度+3%, コントラスト+2% - 自然な美味しさを保持'
-        case 'normal':
-          return '標準調整: 明度+10%, 彩度+8%, コントラスト+5%, 暖色調+3% - バランスの良い食欲増進効果'
-        case 'strong':
-          return '強力調整: 明度+15%, 彩度+15%, コントラスト+10%, 暖色調+8%, シャープ+5% - インパクトのある美味しさ強調'
-        default:
-          return '標準調整を適用'
-      }
-    })()
+    // 2. 画像加工設定の生成
+    const effectSettings = generateImageEffects(effectStrength)
+    const processedImage = image // 元画像にCSSフィルターを適用して表示
+    const imageProcessingDetails = effectSettings.description
 
-    // 3. 業種別キャプション生成
+    // 3. 並列処理でAI生成を高速化
     const businessPrompt = BUSINESS_PROMPTS[businessType as keyof typeof BUSINESS_PROMPTS]
-    const captionResponse = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `あなたは${businessPrompt.style}な${businessType}の店舗SNS担当者です。集客効果の高い魅力的な投稿文を作成してください。`
-        },
-        {
-          role: "user",
-          content: `${businessPrompt.caption}。
+    
+    // キャプション、ハッシュタグ、撮影アドバイスを並列実行
+    const [captionResponse, hashtagResponse, photographyAdviceResponse] = await Promise.all([
+      // キャプション生成
+      openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: `あなたは${businessPrompt.style}な${businessType}の店舗SNS担当者です。集客効果の高い魅力的な投稿文を作成してください。`
+          },
+          {
+            role: "user",
+            content: `${businessPrompt.caption}。
 
 画像分析結果：${imageAnalysis}
 
@@ -252,25 +269,23 @@ export async function POST(request: NextRequest) {
 - 食欲をそそる表現
 - 親しみやすい文体
 - 絵文字を2-3個程度使用`
-        }
-      ],
-      max_tokens: 300,
-      temperature: 0.8
-    })
-
-    const caption = captionResponse.choices[0]?.message?.content || ''
-
-    // 4. ハッシュタグ生成
-    const hashtagResponse = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "あなたはSNSマーケティングの専門家です。効果的なハッシュタグを生成してください。"
-        },
-        {
-          role: "user",
-          content: `${businessType}の料理写真用に効果的なハッシュタグを10個生成してください。
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.8
+      }),
+      
+      // ハッシュタグ生成
+      openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "あなたはSNSマーケティングの専門家です。効果的なハッシュタグを生成してください。"
+          },
+          {
+            role: "user",
+            content: `${businessType}の料理写真用に効果的なハッシュタグを10個生成してください。
 
 画像分析：${imageAnalysis}
 業種：${businessType}
@@ -281,29 +296,23 @@ export async function POST(request: NextRequest) {
 - 業種特有のハッシュタグを含める
 - 料理に関連するハッシュタグを含める
 - #マークは付けずに、改行区切りで出力`
-        }
-      ],
-      max_tokens: 200,
-      temperature: 0.7
-    })
-
-    const hashtagsText = hashtagResponse.choices[0]?.message?.content || ''
-    const hashtags = hashtagsText.split('\n')
-      .filter((tag: string) => tag.trim())
-      .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
-      .slice(0, 10)
-
-    // 5. 撮影アドバイス生成
-    const photographyAdviceResponse = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "あなたは料理写真撮影の専門家です。写真の良い点を褒めつつ、さらに魅力的になるアドバイスを親しみやすく提供してください。"
-        },
-        {
-          role: "user",
-          content: `この料理写真の良い点を褒めつつ、さらに魅力的に撮影するためのアドバイスを教えてください。
+          }
+        ],
+        max_tokens: 200,
+        temperature: 0.7
+      }),
+      
+      // 撮影アドバイス生成
+      openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "あなたは料理写真撮影の専門家です。写真の良い点を褒めつつ、さらに魅力的になるアドバイスを親しみやすく提供してください。"
+          },
+          {
+            role: "user",
+            content: `この料理写真の良い点を褒めつつ、さらに魅力的に撮影するためのアドバイスを教えてください。
 
 画像分析結果：${imageAnalysis}
 業種：${businessType}
@@ -315,12 +324,19 @@ export async function POST(request: NextRequest) {
 - 親しみやすく優しい口調
 
 例：「盛り付けがとても綺麗ですね！もう少し斜め45度から撮影すると立体感が出て、さらに美味しそうに見えますよ。」`
-        }
-      ],
-      max_tokens: 250,
-      temperature: 0.7
-    })
+          }
+        ],
+        max_tokens: 250,
+        temperature: 0.7
+      })
+    ])
 
+    const caption = captionResponse.choices[0]?.message?.content || ''
+    const hashtagsText = hashtagResponse.choices[0]?.message?.content || ''
+    const hashtags = hashtagsText.split('\n')
+      .filter((tag: string) => tag.trim())
+      .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
+      .slice(0, 10)
     const photographyAdvice = photographyAdviceResponse.choices[0]?.message?.content || ''
 
     return NextResponse.json({
@@ -331,7 +347,8 @@ export async function POST(request: NextRequest) {
       analysis: imageAnalysis,
       photographyAdvice: photographyAdvice.trim(),
       businessType,
-      effectStrength
+      effectStrength,
+      imageEffects: effectSettings.filter // CSSフィルター設定をフロントエンドに送信
     })
 
   } catch (error) {
