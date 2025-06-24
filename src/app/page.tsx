@@ -34,6 +34,10 @@ export default function Home() {
   const [photographyAdvice, setPhotographyAdvice] = useState<string>('')
   const [imageEffects, setImageEffects] = useState<string>('')
   const [downloadUrl, setDownloadUrl] = useState<string>('')
+  const [showCaptionPrompt, setShowCaptionPrompt] = useState<boolean>(false)
+  const [showHashtagPrompt, setShowHashtagPrompt] = useState<boolean>(false)
+  const [captionPrompt, setCaptionPrompt] = useState<string>('')
+  const [hashtagPrompt, setHashtagPrompt] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ページ読み込み時に保存された設定を復元
@@ -165,8 +169,14 @@ export default function Home() {
     }
   }
 
-  // キャプション再生成
-  const regenerateCaption = async () => {
+  // キャプション再生成ボタンクリック（プロンプト入力欄を表示）
+  const handleCaptionRegenerate = () => {
+    setShowCaptionPrompt(true)
+    setCaptionPrompt('')
+  }
+
+  // キャプション再生成実行（プロンプトあり）
+  const regenerateCaptionWithPrompt = async () => {
     if (!selectedImage) return
     
     setIsProcessing(true)
@@ -181,13 +191,16 @@ export default function Home() {
           image: selectedImage,
           businessType,
           effectStrength,
-          regenerateCaption: true
+          regenerateCaption: true,
+          customPrompt: captionPrompt
         })
       })
       
       if (response.ok) {
         const result = await response.json()
         setCaption(result.caption)
+        setShowCaptionPrompt(false)
+        setCaptionPrompt('')
       } else {
         try {
           const errorData = await response.json()
@@ -205,8 +218,20 @@ export default function Home() {
     }
   }
 
-  // ハッシュタグ再生成
-  const regenerateHashtags = async () => {
+  // キャプション再生成キャンセル
+  const cancelCaptionRegenerate = () => {
+    setShowCaptionPrompt(false)
+    setCaptionPrompt('')
+  }
+
+  // ハッシュタグ再生成ボタンクリック（プロンプト入力欄を表示）
+  const handleHashtagRegenerate = () => {
+    setShowHashtagPrompt(true)
+    setHashtagPrompt('')
+  }
+
+  // ハッシュタグ再生成実行（プロンプトあり）
+  const regenerateHashtagsWithPrompt = async () => {
     if (!selectedImage) return
     
     setIsProcessing(true)
@@ -221,13 +246,16 @@ export default function Home() {
           image: selectedImage,
           businessType,
           effectStrength,
-          regenerateHashtags: true
+          regenerateHashtags: true,
+          customPrompt: hashtagPrompt
         })
       })
       
       if (response.ok) {
         const result = await response.json()
         setHashtags(result.hashtags.join('\n'))
+        setShowHashtagPrompt(false)
+        setHashtagPrompt('')
       } else {
         try {
           const errorData = await response.json()
@@ -243,6 +271,12 @@ export default function Home() {
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  // ハッシュタグ再生成キャンセル
+  const cancelHashtagRegenerate = () => {
+    setShowHashtagPrompt(false)
+    setHashtagPrompt('')
   }
 
   // 画像ダウンロード用のCanvas処理
@@ -461,7 +495,7 @@ export default function Home() {
                     <h2 className="text-lg sm:text-xl font-semibold">📝 生成されたキャプション</h2>
                     <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                       <button
-                        onClick={regenerateCaption}
+                        onClick={handleCaptionRegenerate}
                         disabled={isProcessing}
                         className="bg-purple-500 text-white px-2 py-1 sm:px-3 sm:py-2 rounded text-xs sm:text-sm hover:bg-purple-600 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
@@ -475,6 +509,34 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
+                  {/* プロンプト入力欄 */}
+                  {showCaptionPrompt && (
+                    <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h3 className="font-medium text-blue-800 mb-2 text-sm sm:text-base">💡 カスタムプロンプト入力</h3>
+                      <textarea
+                        value={captionPrompt}
+                        onChange={(e) => setCaptionPrompt(e.target.value)}
+                        className="w-full h-20 p-2 sm:p-3 border border-blue-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                        placeholder="どのようなキャプションにしたいか具体的に書いてください（例：もっとフォーマルに、季節感を入れて、若者向けの表現で、など）"
+                      />
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={regenerateCaptionWithPrompt}
+                          disabled={isProcessing || !captionPrompt.trim()}
+                          className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isProcessing ? '🤖 生成中...' : '✨ プロンプトで再生成'}
+                        </button>
+                        <button
+                          onClick={cancelCaptionRegenerate}
+                          className="bg-gray-500 text-white px-3 py-2 rounded text-sm hover:bg-gray-600 transition-colors"
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                     <textarea
                       value={caption}
@@ -494,7 +556,7 @@ export default function Home() {
                     <h2 className="text-lg sm:text-xl font-semibold">#️⃣ おすすめハッシュタグ</h2>
                     <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                       <button
-                        onClick={regenerateHashtags}
+                        onClick={handleHashtagRegenerate}
                         disabled={isProcessing}
                         className="bg-purple-500 text-white px-2 py-1 sm:px-3 sm:py-2 rounded text-xs sm:text-sm hover:bg-purple-600 transition-colors disabled:opacity-50 whitespace-nowrap"
                       >
@@ -508,6 +570,34 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
+                  {/* プロンプト入力欄 */}
+                  {showHashtagPrompt && (
+                    <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                      <h3 className="font-medium text-green-800 mb-2 text-sm sm:text-base">💡 カスタムプロンプト入力</h3>
+                      <textarea
+                        value={hashtagPrompt}
+                        onChange={(e) => setHashtagPrompt(e.target.value)}
+                        className="w-full h-20 p-2 sm:p-3 border border-green-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base"
+                        placeholder="どのようなハッシュタグにしたいか具体的に書いてください（例：トレンド重視、地域密着、ターゲット年齢層を意識して、など）"
+                      />
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={regenerateHashtagsWithPrompt}
+                          disabled={isProcessing || !hashtagPrompt.trim()}
+                          className="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isProcessing ? '🤖 生成中...' : '✨ プロンプトで再生成'}
+                        </button>
+                        <button
+                          onClick={cancelHashtagRegenerate}
+                          className="bg-gray-500 text-white px-3 py-2 rounded text-sm hover:bg-gray-600 transition-colors"
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                     <textarea
                       value={hashtags}

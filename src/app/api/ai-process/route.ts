@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { image, businessType, effectStrength, regenerateCaption, regenerateHashtags } = await request.json()
+    const { image, businessType, effectStrength, regenerateCaption, regenerateHashtags, customPrompt } = await request.json()
     
     if (!image || !businessType || !effectStrength) {
       const missingParams = []
@@ -163,16 +163,9 @@ export async function POST(request: NextRequest) {
     if (regenerateCaption) {
       // キャプション再生成のみ
       const businessPrompt = BUSINESS_PROMPTS[businessType as keyof typeof BUSINESS_PROMPTS]
-      const captionResponse = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: `あなたは${businessPrompt.style}な${businessType}の店舗SNS担当者です。集客効果の高い魅力的な投稿文を作成してください。`
-          },
-          {
-            role: "user",
-            content: `${businessPrompt.caption}。
+      
+      // カスタムプロンプトがある場合とない場合で処理を分岐
+      let userPrompt = `${businessPrompt.caption}。
 
 画像分析結果：${imageAnalysis}
 
@@ -184,6 +177,27 @@ export async function POST(request: NextRequest) {
 - 絵文字を2-3個程度使用
 - ハッシュタグは一切含めない（#マークを使わない）
 - 前回とは違う表現で作成`
+
+      // カスタムプロンプトがある場合は追加の指示を含める
+      if (customPrompt && customPrompt.trim()) {
+        userPrompt += `
+
+【重要】ユーザーからの追加リクエスト：
+${customPrompt}
+
+このリクエストを最優先で反映してキャプションを作成してください。`
+      }
+
+      const captionResponse = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: `あなたは${businessPrompt.style}な${businessType}の店舗SNS担当者です。集客効果の高い魅力的な投稿文を作成してください。`
+          },
+          {
+            role: "user",
+            content: userPrompt
           }
         ],
         max_tokens: 300,
@@ -200,16 +214,9 @@ export async function POST(request: NextRequest) {
 
     if (regenerateHashtags) {
       // ハッシュタグ再生成のみ
-      const hashtagResponse = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "あなたはSNSマーケティングの専門家です。効果的なハッシュタグを生成してください。"
-          },
-          {
-            role: "user",
-            content: `${businessType}の料理写真用に効果的なハッシュタグを10個生成してください。
+      
+      // カスタムプロンプトがある場合とない場合で処理を分岐
+      let userPrompt = `${businessType}の料理写真用に効果的なハッシュタグを10個生成してください。
 
 画像分析：${imageAnalysis}
 業種：${businessType}
@@ -222,6 +229,27 @@ export async function POST(request: NextRequest) {
 - 料理に関連するハッシュタグを含める
 - #マークは付けずに、改行区切りで出力
 - 前回とは違うバリエーションで作成`
+
+      // カスタムプロンプトがある場合は追加の指示を含める
+      if (customPrompt && customPrompt.trim()) {
+        userPrompt += `
+
+【重要】ユーザーからの追加リクエスト：
+${customPrompt}
+
+このリクエストを最優先で反映してハッシュタグを作成してください。`
+      }
+
+      const hashtagResponse = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "あなたはSNSマーケティングの専門家です。効果的なハッシュタグを生成してください。"
+          },
+          {
+            role: "user",
+            content: userPrompt
           }
         ],
         max_tokens: 200,
