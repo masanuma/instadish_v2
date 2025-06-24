@@ -189,7 +189,7 @@ ${customPrompt}
       }
 
       const captionResponse = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -241,7 +241,7 @@ ${customPrompt}
       }
 
       const hashtagResponse = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -281,7 +281,7 @@ ${customPrompt}
     const [captionResponse, hashtagResponse, photographyAdviceResponse] = await Promise.all([
       // キャプション生成
       openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -302,13 +302,13 @@ ${customPrompt}
 - ハッシュタグは一切含めない（#マークを使わない）`
           }
         ],
-        max_tokens: 300,
+        max_tokens: 150,
         temperature: 0.8
       }),
       
       // ハッシュタグ生成
       openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -330,13 +330,13 @@ ${customPrompt}
 - #マークは付けずに、改行区切りで出力`
           }
         ],
-        max_tokens: 200,
+        max_tokens: 100,
         temperature: 0.7
       }),
       
       // 撮影アドバイス生成
       openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -358,7 +358,7 @@ ${customPrompt}
 例：「盛り付けがとても綺麗ですね！もう少し斜め45度から撮影すると立体感が出て、さらに美味しそうに見えますよ。」`
           }
         ],
-        max_tokens: 250,
+        max_tokens: 120,
         temperature: 0.7
       })
     ])
