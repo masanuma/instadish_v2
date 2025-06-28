@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { validateSession } from '@/lib/auth'
 
 // ビルド時の事前レンダリングを無効にする
 export const dynamic = 'force-dynamic'
@@ -87,6 +88,24 @@ function generateImageEffects(effectStrength: string) {
 
 export async function POST(request: NextRequest) {
   try {
+    // 認証チェック
+    const token = request.cookies.get('auth_token')?.value
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
+      )
+    }
+
+    const store = await validateSession(token)
+    if (!store) {
+      return NextResponse.json(
+        { error: 'セッションが無効です' },
+        { status: 401 }
+      )
+    }
+
     // 最初にAPIキーの存在を確認
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -269,13 +288,53 @@ ${customPrompt}
     }
 
     // 通常の全体処理
-    // 2. 画像加工設定の生成
+    // 2. 店舗紹介文から業種を自動判定
+    let detectedBusinessType = businessType // デフォルトは指定された業種
+    
+    if (store.store_description && store.store_description.trim()) {
+      const businessDetectionResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "あなたは店舗の業種分類の専門家です。店舗紹介文から業種を判定してください。"
+          },
+          {
+            role: "user",
+            content: `以下の店舗紹介文から業種を判定してください。
+
+店舗紹介文：「${store.store_description.trim()}」
+
+以下の選択肢から最も適切な業種を1つ選んで、そのIDのみを回答してください：
+- bar: バー（お酒メイン、大人の雰囲気）
+- izakaya: 居酒屋（お酒と料理、カジュアル）
+- sushi: 寿司店（寿司、和食、高級）
+- ramen: ラーメン店（ラーメン、麺類）
+- cafe: カフェ（コーヒー、軽食、おしゃれ）
+- restaurant: レストラン（洋食、コース料理、上品）
+- yakiniku:焼肉店（焼肉、BBQ、肉料理）
+- italian: イタリアン（イタリア料理、パスタ、ピザ）
+
+回答は業種IDのみ（例：sushi）で答えてください。`
+          }
+        ],
+        max_tokens: 10,
+        temperature: 0.1
+      })
+      
+      const detectedType = businessDetectionResponse.choices[0]?.message?.content?.trim()
+      if (detectedType && BUSINESS_PROMPTS[detectedType as keyof typeof BUSINESS_PROMPTS]) {
+        detectedBusinessType = detectedType
+      }
+    }
+
+    // 3. 画像加工設定の生成
     const effectSettings = generateImageEffects(effectStrength)
     const processedImage = image // 元画像にCSSフィルターを適用して表示
     const imageProcessingDetails = effectSettings.description
 
-    // 3. 並列処理でAI生成を高速化
-    const businessPrompt = BUSINESS_PROMPTS[businessType as keyof typeof BUSINESS_PROMPTS]
+    // 4. 並列処理でAI生成を高速化
+    const businessPrompt = BUSINESS_PROMPTS[detectedBusinessType as keyof typeof BUSINESS_PROMPTS]
     
     // キャプション、ハッシュタグ、撮影アドバイスを並列実行
     const [captionResponse, hashtagResponse, photographyAdviceResponse] = await Promise.all([
@@ -316,10 +375,10 @@ ${customPrompt}
           },
           {
             role: "user",
-            content: `${businessType}の料理写真用に効果的なハッシュタグを10個生成してください。
+            content: `${detectedBusinessType}の料理写真用に効果的なハッシュタグを10個生成してください。
 
 画像分析：${imageAnalysis}
-業種：${businessType}
+業種：${detectedBusinessType}
 
 条件：
 - 日本語と英語を5:5の割合で混在させる
@@ -347,7 +406,7 @@ ${customPrompt}
             content: `この料理写真の良い点を褒めつつ、さらに魅力的に撮影するためのアドバイスを教えてください。
 
 画像分析結果：${imageAnalysis}
-業種：${businessType}
+業種：${detectedBusinessType}
 
 以下の書き方でアドバイスを150文字以内で提供してください：
 - まず写真の良い点を褒める（「○○がとても素敵ですね！」など）
@@ -378,7 +437,7 @@ ${customPrompt}
       hashtags,
       analysis: imageAnalysis,
       photographyAdvice: photographyAdvice.trim(),
-      businessType,
+      businessType: detectedBusinessType,
       effectStrength,
       imageEffects: effectSettings.filter, // CSSフィルター設定をフロントエンドに送信
       processingDetails: imageProcessingDetails // 加工詳細説明を送信

@@ -2,18 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react'
 
-// 業種選択肢
-const BUSINESS_TYPES = [
-  { id: 'bar', name: 'バー', description: '大人の雰囲気を演出' },
-  { id: 'izakaya', name: '居酒屋', description: 'カジュアルで親しみやすく' },
-  { id: 'sushi', name: '寿司店', description: '高級感と職人技を表現' },
-  { id: 'ramen', name: 'ラーメン店', description: '温かみとボリューム感' },
-  { id: 'cafe', name: 'カフェ', description: 'おしゃれで落ち着いた印象' },
-  { id: 'restaurant', name: 'レストラン', description: '上品で洗練された雰囲気' },
-  { id: 'yakiniku', name: '焼肉店', description: '迫力と食欲をそそる表現' },
-  { id: 'italian', name: 'イタリアン', description: '陽気で本格的な味' }
-]
-
 // エフェクト強度選択肢
 const EFFECT_STRENGTHS = [
   { id: 'weak', name: '弱い', description: '自然な美味しさ強調' },
@@ -24,7 +12,7 @@ const EFFECT_STRENGTHS = [
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [processedImage, setProcessedImage] = useState<string | null>(null)
-  const [businessType, setBusinessType] = useState<string>('restaurant')
+  const [businessType, setBusinessType] = useState<string>('restaurant') // 固定値
   const [effectStrength, setEffectStrength] = useState<string>('normal')
   const [caption, setCaption] = useState<string>('')
   const [hashtags, setHashtags] = useState<string>('')
@@ -38,25 +26,41 @@ export default function Home() {
   const [showHashtagPrompt, setShowHashtagPrompt] = useState<boolean>(false)
   const [captionPrompt, setCaptionPrompt] = useState<string>('')
   const [hashtagPrompt, setHashtagPrompt] = useState<string>('')
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
+  const [storeName, setStoreName] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ページ読み込み時に保存された設定を復元
+  // ページ読み込み時に保存された設定を復元 & 認証状態チェック
   useEffect(() => {
-    const savedBusinessType = localStorage.getItem('instadish-business-type')
     const savedEffectStrength = localStorage.getItem('instadish-effect-strength')
     
-    if (savedBusinessType) {
-      setBusinessType(savedBusinessType)
-    }
     if (savedEffectStrength) {
       setEffectStrength(savedEffectStrength)
     }
+
+    // 認証状態をチェック
+    checkAuthStatus()
   }, [])
 
-  // 業種選択時に保存
-  const handleBusinessTypeChange = (type: string) => {
-    setBusinessType(type)
-    localStorage.setItem('instadish-business-type', type)
+  const checkAuthStatus = async () => {
+    try {
+      const response = await fetch('/api/store', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setIsLoggedIn(true)
+        setStoreName(data.name || '店舗')
+      } else {
+        setIsLoggedIn(false)
+        setStoreName('')
+      }
+    } catch (error) {
+      setIsLoggedIn(false)
+      setStoreName('')
+    }
   }
 
   // エフェクト強度選択時に保存
@@ -308,13 +312,32 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* ヘッダー */}
-        <div className="text-center mb-6 sm:mb-8">
+        <div className="text-center mb-6 sm:mb-8 relative">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2 sm:mb-4">
             InstaDish Pro
           </h1>
           <p className="text-sm sm:text-lg text-gray-600">
             AI画像加工 × 業種別キャプション生成サービス
           </p>
+          
+          {/* ログイン状態に応じたボタン表示 */}
+          <div className="absolute top-0 right-0">
+            {isLoggedIn ? (
+              <button
+                onClick={() => window.location.href = '/dashboard'}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+              >
+                ⚙️ 店舗設定
+              </button>
+            ) : (
+              <button
+                onClick={() => window.location.href = '/login'}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+              >
+                🔑 ログイン
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="max-w-6xl mx-auto">
@@ -374,21 +397,7 @@ export default function Home() {
                 )}
               </div>
 
-              {/* 業種選択 */}
-              <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">🏪 業種選択</h2>
-                <select
-                  value={businessType}
-                  onChange={(e) => handleBusinessTypeChange(e.target.value)}
-                  className="w-full p-3 sm:p-4 border-2 border-gray-300 rounded-lg text-base sm:text-lg font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
-                >
-                  {BUSINESS_TYPES.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name} - {type.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* 業種は店舗紹介文から自動判断されるため、選択UIを削除 */}
 
               {/* エフェクト強度選択 */}
               <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
