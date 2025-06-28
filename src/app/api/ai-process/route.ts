@@ -335,43 +335,22 @@ ${customPrompt}
     const processedImage = image // 元画像にCSSフィルターを適用して表示
     const imageProcessingDetails = effectSettings.description
 
-    // 4. 固定キャプション・ハッシュタグの確認と処理
-    let finalCaption = ''
-    let finalHashtags: string[] = []
-
-    // 固定キャプションがある場合は優先使用
-    if (store.fixed_caption && store.fixed_caption.trim()) {
-      finalCaption = store.fixed_caption.trim()
-    }
-
-    // 固定ハッシュタグがある場合は優先使用
-    if (store.fixed_hashtags && store.fixed_hashtags.trim()) {
-      finalHashtags = store.fixed_hashtags
-        .split(/[\s,]+/) // スペースまたはカンマで分割
-        .filter((tag: string) => tag.trim())
-        .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
-        .slice(0, 10)
-    }
-
-    // 5. AI生成処理（固定値がない場合のみ）
+    // 4. AI生成処理（常に実行）
     const businessPrompt = BUSINESS_PROMPTS[detectedBusinessType as keyof typeof BUSINESS_PROMPTS]
     
-    // 並列処理でAI生成を高速化（必要な項目のみ）
-    const promises = []
-
-    // キャプションがない場合のみAI生成
-    if (!finalCaption) {
-      promises.push(
-        openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `あなたは${businessPrompt.style}な${businessType}の店舗SNS担当者です。集客効果の高い魅力的な投稿文を作成してください。キャプション本文のみを出力し、説明や前置きは一切含めないでください。`
-            },
-            {
-              role: "user",
-              content: `${businessPrompt.caption}。
+    // キャプション、ハッシュタグ、撮影アドバイスを並列実行
+    const [captionResponse, hashtagResponse, photographyAdviceResponse] = await Promise.all([
+      // キャプション生成
+      openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `あなたは${businessPrompt.style}な${businessType}の店舗SNS担当者です。集客効果の高い魅力的な投稿文を作成してください。キャプション本文のみを出力し、説明や前置きは一切含めないでください。`
+          },
+          {
+            role: "user",
+            content: `${businessPrompt.caption}。
 
 画像分析結果：${imageAnalysis}
 
@@ -383,29 +362,23 @@ ${customPrompt}
 - 絵文字を2-3個程度使用
 - ハッシュタグは一切含めない（#マークを使わない）
 - キャプション本文のみを出力し、説明文は一切含めない`
-            }
-          ],
-          max_tokens: 150,
-          temperature: 0.8
-        })
-      )
-    } else {
-      promises.push(Promise.resolve(null))
-    }
-
-    // ハッシュタグがない場合のみAI生成
-    if (finalHashtags.length === 0) {
-      promises.push(
-        openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: "あなたはSNSマーケティングの専門家です。効果的なハッシュタグを生成してください。ハッシュタグのみを出力し、説明や前置きは一切含めないでください。"
-            },
-            {
-              role: "user",
-              content: `${detectedBusinessType}の料理写真用に効果的なハッシュタグを10個生成してください。
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.8
+      }),
+      
+      // ハッシュタグ生成
+      openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "あなたはSNSマーケティングの専門家です。効果的なハッシュタグを生成してください。ハッシュタグのみを出力し、説明や前置きは一切含めないでください。"
+          },
+          {
+            role: "user",
+            content: `${detectedBusinessType}の料理写真用に効果的なハッシュタグを10個生成してください。
 
 画像分析：${imageAnalysis}
 業種：${detectedBusinessType}
@@ -418,18 +391,13 @@ ${customPrompt}
 - 料理に関連するハッシュタグを含める
 - #マークは付けずに、改行区切りで出力
 - ハッシュタグのみを出力し、説明文は一切含めない`
-            }
-          ],
-          max_tokens: 100,
-          temperature: 0.7
-        })
-      )
-    } else {
-      promises.push(Promise.resolve(null))
-    }
-
-    // 撮影アドバイス生成（常に実行）
-    promises.push(
+          }
+        ],
+        max_tokens: 100,
+        temperature: 0.7
+      }),
+      
+      // 撮影アドバイス生成
       openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -456,24 +424,45 @@ ${customPrompt}
         max_tokens: 120,
         temperature: 0.7
       })
-    )
+    ])
 
-    const [captionResponse, hashtagResponse, photographyAdviceResponse] = await Promise.all(promises)
+    // AI生成結果の取得
+    let aiCaption = captionResponse.choices[0]?.message?.content?.trim() || ''
+    const hashtagsText = hashtagResponse.choices[0]?.message?.content || ''
+    let aiHashtags = hashtagsText.split('\n')
+      .filter((tag: string) => tag.trim())
+      .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
+      .slice(0, 10)
+    const photographyAdvice = photographyAdviceResponse.choices[0]?.message?.content?.trim() || ''
 
-    // AI生成結果の処理
-    if (!finalCaption && captionResponse) {
-      finalCaption = captionResponse.choices[0]?.message?.content?.trim() || ''
+    // 5. 固定キャプション・ハッシュタグの追記処理
+    let finalCaption = aiCaption
+    let finalHashtags = [...aiHashtags]
+
+    // 固定キャプションがある場合は追記
+    if (store.fixed_caption && store.fixed_caption.trim()) {
+      const fixedCaption = store.fixed_caption.trim()
+      if (finalCaption) {
+        finalCaption = `${finalCaption}\n\n${fixedCaption}`
+      } else {
+        finalCaption = fixedCaption
+      }
     }
 
-    if (finalHashtags.length === 0 && hashtagResponse) {
-      const hashtagsText = hashtagResponse.choices[0]?.message?.content || ''
-      finalHashtags = hashtagsText.split('\n')
+    // 固定ハッシュタグがある場合は追記
+    if (store.fixed_hashtags && store.fixed_hashtags.trim()) {
+      const fixedHashtags = store.fixed_hashtags
+        .split(/[\s,]+/) // スペースまたはカンマで分割
         .filter((tag: string) => tag.trim())
         .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
-        .slice(0, 10)
+      
+      // 重複を避けて追加
+      fixedHashtags.forEach((tag: string) => {
+        if (!finalHashtags.includes(tag)) {
+          finalHashtags.push(tag)
+        }
+      })
     }
-
-    const photographyAdvice = photographyAdviceResponse?.choices[0]?.message?.content?.trim() || ''
 
     return NextResponse.json({
       success: true,
