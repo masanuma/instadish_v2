@@ -30,10 +30,10 @@ export default function AdminLoginPage() {
         localStorage.setItem('adminToken', data.token)
         router.push('/admin')
       } else {
-        setError(data.error || 'ログインに失敗しました')
+        setError(data.error || 'ログインに失敗しました！')
       }
     } catch (error) {
-      setError('ネットワークエラーが発生しました')
+      setError('ネットワークエラーが発生しました！')
     } finally {
       setIsLoading(false)
     }
