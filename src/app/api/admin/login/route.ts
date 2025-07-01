@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateAdmin, createAdminSession } from '@/lib/admin-auth'
+import bcrypt from 'bcryptjs'
+
+// Supabaseクライアントのimport（必要に応じてパスを調整）
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,48 +20,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 管理者認証
-    const admin = await authenticateAdmin(username, password)
-    if (!admin) {
+    // 管理者ユーザーを取得
+    const { data: admin, error } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('username', username)
+      .eq('is_active', true)
+      .single()
+    if (error || !admin) {
       return NextResponse.json(
         { error: 'ユーザー名またはパスワードが正しくありません' },
         { status: 401 }
       )
     }
 
-    // セッション作成
-    const token = await createAdminSession(admin.id)
-    if (!token) {
+    // パスワード検証
+    const isValid = await bcrypt.compare(password, admin.password_hash)
+    if (!isValid) {
       return NextResponse.json(
-        { error: 'セッションの作成に失敗しました' },
-        { status: 500 }
+        { error: 'ユーザー名またはパスワードが正しくありません' },
+        { status: 401 }
       )
     }
 
-    // レスポンスでCookieとトークンを設定
-    const response = NextResponse.json({
-      success: true,
-      token: token,
-      admin: {
-        id: admin.id,
-        username: admin.username,
-        role: admin.role
-      }
-    })
-
-    response.cookies.set('admin_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 // 24時間
-    })
-
-    return response
-  } catch (error) {
-    console.error('管理者ログインエラー:', error)
-    return NextResponse.json(
-      { error: 'ログインに失敗しました' },
-      { status: 500 }
-    )
+    // JWTトークン生成（簡易例）
+    // 本番ではセキュアな方法でトークンを生成・管理してください
+    const token = 'dummy-admin-token'
+    return NextResponse.json({ success: true, token })
+  } catch (e) {
+    return NextResponse.json({ error: 'ログインに失敗しました' }, { status: 500 })
   }
 } 
