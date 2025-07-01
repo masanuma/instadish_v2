@@ -112,6 +112,14 @@ export default function LoginPage() {
             店舗コードやパスワードが分からない場合は<br />
             店長にお問い合わせください
           </p>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-600">
+              新規アカウント作成は{' '}
+              <a href="/register" className="text-orange-500 hover:text-orange-600 font-medium">
+                こちら
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

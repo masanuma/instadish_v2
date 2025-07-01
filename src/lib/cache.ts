@@ -11,10 +11,10 @@ interface CacheEntry {
   expires_at: string
 }
 
-// Supabaseクライアントの初期化
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// Supabaseクライアントの初期化（本番接続）
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://prkmqzmramzdolmjsvmq.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBya21xem1yYW16ZG9sbWpzdm1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4NjY4MTMsImV4cCI6MjA2NjQ0MjgxM30.4vZTOPOJ1Z8VFr2qKr8wJZGQ1mDR5K2Xw8nQZGQ1mDR'
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // 画像のハッシュ値を生成（簡易版）
 export function generateImageHash(imageData: string): string {
@@ -31,75 +31,30 @@ export function generateImageHash(imageData: string): string {
   return Math.abs(hash).toString(36)
 }
 
-// キャッシュから結果を取得
+// キャッシュから結果を取得（一時的に無効化）
 export async function getCachedResult(
   imageHash: string, 
   businessType: string, 
   effectStrength: string
 ): Promise<any | null> {
-  try {
-    const { data, error } = await supabase
-      .from('ai_processing_cache')
-      .select('*')
-      .eq('image_hash', imageHash)
-      .eq('business_type', businessType)
-      .eq('effect_strength', effectStrength)
-      .gt('expires_at', new Date().toISOString())
-      .single()
-
-    if (error || !data) {
-      return null
-    }
-
-    return data.result
-  } catch (error) {
-    console.error('キャッシュ取得エラー:', error)
-    return null
-  }
+  // 一時的にキャッシュ機能を無効化（Anon Keyの権限制限のため）
+  console.log('キャッシュ機能は一時的に無効化されています')
+  return null
 }
 
-// 結果をキャッシュに保存
+// 結果をキャッシュに保存（一時的に無効化）
 export async function cacheResult(
   imageHash: string,
   businessType: string,
   effectStrength: string,
   result: any
 ): Promise<void> {
-  try {
-    // 24時間後に期限切れ
-    const expiresAt = new Date()
-    expiresAt.setHours(expiresAt.getHours() + 24)
-
-    const { error } = await supabase
-      .from('ai_processing_cache')
-      .upsert({
-        image_hash: imageHash,
-        business_type: businessType,
-        effect_strength: effectStrength,
-        result: result,
-        expires_at: expiresAt.toISOString()
-      })
-
-    if (error) {
-      console.error('キャッシュ保存エラー:', error)
-    }
-  } catch (error) {
-    console.error('キャッシュ保存エラー:', error)
-  }
+  // 一時的にキャッシュ機能を無効化（Anon Keyの権限制限のため）
+  console.log('キャッシュ保存機能は一時的に無効化されています')
 }
 
-// 古いキャッシュエントリを削除
+// 古いキャッシュエントリを削除（一時的に無効化）
 export async function cleanupExpiredCache(): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('ai_processing_cache')
-      .delete()
-      .lt('expires_at', new Date().toISOString())
-
-    if (error) {
-      console.error('キャッシュクリーンアップエラー:', error)
-    }
-  } catch (error) {
-    console.error('キャッシュクリーンアップエラー:', error)
-  }
+  // 一時的にキャッシュ機能を無効化（Anon Keyの権限制限のため）
+  console.log('キャッシュクリーンアップ機能は一時的に無効化されています')
 } 

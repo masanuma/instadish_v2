@@ -329,7 +329,7 @@ export default function Home() {
           </p>
           
           {/* ログイン状態に応じたボタン表示 */}
-          <div className="absolute top-0 right-0">
+          <div className="absolute top-0 right-0 flex space-x-2">
             {isLoggedIn ? (
               <button
                 onClick={() => window.location.href = '/dashboard'}
@@ -338,12 +338,20 @@ export default function Home() {
                 ⚙️ 店舗設定
               </button>
             ) : (
-              <button
-                onClick={() => window.location.href = '/login'}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
-              >
-                🔑 ログイン
-              </button>
+              <>
+                <button
+                  onClick={() => window.location.href = '/register'}
+                  className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                >
+                  📝 新規登録
+                </button>
+                <button
+                  onClick={() => window.location.href = '/login'}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                >
+                  🔑 ログイン
+                </button>
+              </>
             )}
           </div>
         </div>
