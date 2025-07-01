@@ -314,4 +314,5 @@ NEXT_PUBLIC_APP_URL=https://your-app-domain.com
 4. テスト結果のご報告・ご確認依頼
 5. 本番反映（ご指示があれば） 
 
-// ダミーコミット用コメント（キャッシュクリア目的） 
+// dummy-20240701-2100
+// ... existing code ... 
