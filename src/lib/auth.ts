@@ -2,7 +2,11 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { supabase, Store, AuthSession } from './supabase'
 
+<<<<<<< HEAD
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-here'
+=======
+const JWT_SECRET = process.env.JWT_SECRET!
+>>>>>>> master
 const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24時間
 
 // パスワードをハッシュ化

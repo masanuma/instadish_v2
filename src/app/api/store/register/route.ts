@@ -7,6 +7,10 @@ export async function POST(request: NextRequest) {
     const {
       store_code,
       name,
+<<<<<<< HEAD
+=======
+      email,
+>>>>>>> master
       address,
       phone,
       password,
@@ -16,9 +20,15 @@ export async function POST(request: NextRequest) {
     } = await request.json()
 
     // 必須項目チェック
+<<<<<<< HEAD
     if (!store_code || !name || !password) {
       return NextResponse.json(
         { error: '店舗コード、店舗名、パスワードは必須です' },
+=======
+    if (!store_code || !name || !email || !password) {
+      return NextResponse.json(
+        { error: '店舗コード、店舗名、メールアドレス、パスワードは必須です' },
+>>>>>>> master
         { status: 400 }
       )
     }
@@ -46,6 +56,10 @@ export async function POST(request: NextRequest) {
       .insert({
         store_code,
         name,
+<<<<<<< HEAD
+=======
+        email: email || '',
+>>>>>>> master
         address: address || '',
         phone: phone || '',
         password_hash,
@@ -64,12 +78,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
+<<<<<<< HEAD
+=======
+    // デフォルトプランを取得
+    const { data: defaultPlan, error: planError } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .eq('is_active', true)
+      .single()
+
+    if (!planError && defaultPlan) {
+      // 30日間の無料トライアルでサブスクリプションを作成
+      const trialStart = new Date()
+      const trialEnd = new Date(trialStart.getTime() + (30 * 24 * 60 * 60 * 1000))
+
+      await supabase
+        .from('subscriptions')
+        .insert({
+          store_id: data.id,
+          plan_id: defaultPlan.id,
+          status: 'trialing',
+          trial_start: trialStart.toISOString(),
+          trial_end: trialEnd.toISOString(),
+          current_period_start: trialStart.toISOString(),
+          current_period_end: trialEnd.toISOString()
+        })
+    }
+
+>>>>>>> master
     // パスワードハッシュを除外して返す
     const { password_hash: _, ...newStore } = data
 
     return NextResponse.json({
       store: newStore,
+<<<<<<< HEAD
       message: '店舗を登録しました'
+=======
+      message: '店舗を登録しました。30日間の無料トライアルが開始されました。'
+>>>>>>> master
     })
   } catch (error) {
     console.error('店舗登録エラー:', error)

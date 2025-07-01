@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "store_code": "TEST001",
   "name": "テスト店舗",
   "password": "test123",
@@ -7,4 +8,26 @@
   "fixed_caption": "本日もご来店をお待ちしております！",
   "fixed_hashtags": "#美味しい #地元グルメ #おすすめ",
   "store_description": "地元に愛される家庭料理店です。素材にこだわり、心を込めてお作りしています。温かい雰囲気でお客様をお迎えします。"
+=======
+  "store": {
+    "store_code": "TEST001",
+    "name": "テスト店舗",
+    "password": "test123",
+    "email": "asanuma.works@gmail.com",
+    "address": "東京都渋谷区テスト町1-1-1",
+    "phone": "03-1234-5678",
+    "store_description": "InstaDish Pro テスト用店舗です"
+  },
+  "admin": {
+    "username": "admin",
+    "email": "admin@instadish.com", 
+    "password": "admin123"
+  },
+  "subscription_plan": {
+    "name": "InstaDish Pro ベーシックプラン",
+    "price_monthly": 5000,
+    "stripe_price_id": "price_1ReBIuFaHkt2FbdwJgctzXU1",
+    "features": ["AI画像処理", "月額制", "2週間無料トライアル", "メールサポート"]
+  }
+>>>>>>> master
 } 

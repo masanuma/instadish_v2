@@ -28,6 +28,11 @@ export default function Home() {
   const [hashtagPrompt, setHashtagPrompt] = useState<string>('')
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
   const [storeName, setStoreName] = useState<string>('')
+<<<<<<< HEAD
+=======
+  const [processingTime, setProcessingTime] = useState<number>(0)
+  const [fromCache, setFromCache] = useState<boolean>(false)
+>>>>>>> master
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ページ読み込み時に保存された設定を復元 & 認証状態チェック
@@ -92,6 +97,11 @@ export default function Home() {
     if (!selectedImage) return
     
     setIsProcessing(true)
+<<<<<<< HEAD
+=======
+    setProcessingTime(0)
+    setFromCache(false)
+>>>>>>> master
     
     try {
       const response = await fetch('/api/ai-process', {
@@ -115,6 +125,13 @@ export default function Home() {
         setPhotographyAdvice(result.photographyAdvice || '')
         setImageEffects(result.imageEffects || '')
         
+<<<<<<< HEAD
+=======
+        // 処理時間とキャッシュ情報を設定
+        setProcessingTime(result.processingTime || 0)
+        setFromCache(result.fromCache || false)
+        
+>>>>>>> master
         // APIから返された加工詳細を設定
         setProcessingDetails(result.processingDetails || '画像エフェクト適用済み')
 
@@ -321,7 +338,11 @@ export default function Home() {
           </p>
           
           {/* ログイン状態に応じたボタン表示 */}
+<<<<<<< HEAD
           <div className="absolute top-0 right-0">
+=======
+          <div className="absolute top-0 right-0 flex space-x-2">
+>>>>>>> master
             {isLoggedIn ? (
               <button
                 onClick={() => window.location.href = '/dashboard'}
@@ -330,12 +351,29 @@ export default function Home() {
                 ⚙️ 店舗設定
               </button>
             ) : (
+<<<<<<< HEAD
               <button
                 onClick={() => window.location.href = '/login'}
                 className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
               >
                 🔑 ログイン
               </button>
+=======
+              <>
+                <button
+                  onClick={() => window.location.href = '/register'}
+                  className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                >
+                  📝 新規登録
+                </button>
+                <button
+                  onClick={() => window.location.href = '/login'}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                >
+                  🔑 ログイン
+                </button>
+              </>
+>>>>>>> master
             )}
           </div>
         </div>
@@ -428,6 +466,32 @@ export default function Home() {
               >
                 {isProcessing ? '🤖 AI処理中...' : '🚀 AI加工・キャプション生成'}
               </button>
+<<<<<<< HEAD
+=======
+
+              {/* 処理時間とキャッシュ情報表示 */}
+              {processingTime > 0 && (
+                <div className="bg-white rounded-lg shadow-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-700">
+                        ⏱️ 処理時間: {processingTime}ms
+                      </span>
+                      {fromCache && (
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                          🚀 キャッシュから高速取得
+                        </span>
+                      )}
+                    </div>
+                    {processingTime < 1000 && !fromCache && (
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                        ⚡ 高速処理
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+>>>>>>> master
             </div>
 
             {/* 右側：結果表示エリア */}
