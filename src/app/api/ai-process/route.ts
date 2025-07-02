@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '@/lib/auth'
 import { generateImageHash, getCachedResult, cacheResult } from '@/lib/cache'
-import { supabase } from '@/lib/supabase'
-import { 
-  executeWithRetry, 
-  createOptimizedOpenAIClient, 
-  optimizePrompt, 
+import {
+  executeWithRetry,
   measureExecutionTime,
   standardizeErrorMessage,
   validateAIResponse
 } from '@/lib/ai-utils'
+import OpenAI from 'openai'
 
 // ビルド時の事前レンダリングを無効にする
 export const dynamic = 'force-dynamic'
@@ -84,6 +82,12 @@ function generateImageEffects(effectStrength: string) {
   }
 }
 
+// OpenAIクライアント生成（本番用）
+function createOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY!
+  return new OpenAI({ apiKey })
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   
@@ -146,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     // OpenAI クライアントの初期化
-    const openai = createOptimizedOpenAIClient()
+    const openai = createOpenAIClient()
 
     // 再生成の場合は画像解析をスキップ
     let imageAnalysis = ''
