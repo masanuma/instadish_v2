@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '@/lib/auth'
 import { generateImageHash, getCachedResult, cacheResult } from '@/lib/cache'
+import { supabase } from '@/lib/supabase'
 import { 
   executeWithRetry, 
   createOptimizedOpenAIClient, 
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 // 業種別のプロンプト設定
-const BUSINESS_PROMPTS = {
+const BUSINESS_PROMPTS: Record<string, { caption: string; style: string }> = {
   bar: {
     caption: 'バーの雰囲気に合う大人っぽく洗練された表現で、この料理・ドリンクの魅力を集客につながるキャプションにして',
     style: '大人の夜の時間、洗練された味わい'
@@ -85,23 +86,37 @@ function generateImageEffects(effectStrength: string) {
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
+  
   try {
-    // テスト用のダミー店舗情報
-    const store = {
-      id: 'test-store-id',
-      name: 'テスト店舗',
-      store_code: 'TEST001',
-      store_description: 'テスト用の店舗です。美味しい料理を提供しています。',
-      fixed_caption: '【テスト店舗】\n\n',
-      fixed_hashtags: '\n#テスト店舗 #美味しい #おすすめ'
+    // 認証チェック
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
+                  request.cookies.get('token')?.value
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
+      )
     }
 
-    // APIキーの確認（テスト用にダミーキーを設定）
+    const store = await validateSession(token)
+    if (!store) {
+      return NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
+      )
+    }
+
+    // OpenAI APIキーの確認
     if (!process.env.OPENAI_API_KEY) {
-      process.env.OPENAI_API_KEY = 'sk-test-dummy-openai-api-key'
+      return NextResponse.json(
+        { error: 'OpenAI APIキーが設定されていません' },
+        { status: 500 }
+      )
     }
 
     const { image, businessType, effectStrength, regenerateCaption, regenerateHashtags, customPrompt } = await request.json()
+    
     if (!image || !businessType || !effectStrength) {
       const missingParams = []
       if (!image) missingParams.push('image')
@@ -133,23 +148,123 @@ export async function POST(request: NextRequest) {
     // OpenAI クライアントの初期化
     const openai = createOptimizedOpenAIClient()
 
-    // ここにAI処理のロジックを記述（省略）
-    // ...
+    // 再生成の場合は画像解析をスキップ
+    let imageAnalysis = ''
+    if (!regenerateCaption && !regenerateHashtags) {
+      // 画像解析
+      const analysisResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "あなたは料理写真の専門家です。画像を分析して、料理の種類、特徴、見た目の魅力を詳細に説明してください。"
+          },
+          {
+            role: "user",
+            content: `この料理写真を分析してください。料理の種類、見た目の特徴、美味しそうに見えるポイントを詳しく教えてください。`
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.3
+      })
 
-    // ダミーのレスポンス
+      imageAnalysis = analysisResponse.choices[0]?.message?.content || ''
+    } else {
+      imageAnalysis = `${businessType}の美味しそうな料理写真`
+    }
+
+    // キャプション生成
+    const captionPrompt = customPrompt || BUSINESS_PROMPTS[businessType]?.caption || 'この料理の魅力を表現するキャプションを生成してください'
+    
+    const captionResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "あなたはSNS投稿の専門家です。料理写真に最適な魅力的なキャプションを生成してください。"
+        },
+        {
+          role: "user",
+          content: `画像分析: ${imageAnalysis}\n\n業種: ${businessType}\n\n${captionPrompt}\n\n店舗の固定キャプション: ${store.fixed_caption || ''}\n\n魅力的で集客につながるキャプションを生成してください。`
+        }
+      ],
+      max_tokens: 200,
+      temperature: 0.7
+    })
+
+    let caption = captionResponse.choices[0]?.message?.content || ''
+    
+    // 固定キャプションの追加
+    if (store.fixed_caption) {
+      caption = `${caption}\n\n${store.fixed_caption}`
+    }
+
+    // ハッシュタグ生成
+    const hashtagResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "あなたはSNSマーケティングの専門家です。料理写真に最適な効果的なハッシュタグを生成してください。"
+        },
+        {
+          role: "user",
+          content: `画像分析: ${imageAnalysis}\n\n業種: ${businessType}\n\nキャプション: ${caption}\n\nこの料理写真に最適な、人気で効果的なハッシュタグを10個生成してください。各ハッシュタグは改行で区切ってください。`
+        }
+      ],
+      max_tokens: 150,
+      temperature: 0.6
+    })
+
+    let hashtags = hashtagResponse.choices[0]?.message?.content || ''
+    
+    // 固定ハッシュタグの追加
+    if (store.fixed_hashtags) {
+      hashtags = `${hashtags}\n${store.fixed_hashtags}`
+    }
+
+    // ハッシュタグを配列に変換
+    const hashtagArray = hashtags
+      .split('\n')
+      .map(tag => tag.trim())
+      .filter(tag => tag.startsWith('#') && tag.length > 1)
+
+    // 画像エフェクトの適用
+    const imageEffects = generateImageEffects(effectStrength)
+    const processedImage = image // 実際の画像処理はフロントエンドでCSSフィルターを使用
+
+    // 結果をキャッシュに保存
+    if (!regenerateCaption && !regenerateHashtags) {
+      const imageHash = generateImageHash(image)
+      await cacheResult(imageHash, businessType, effectStrength, {
+        processedImage,
+        caption,
+        hashtags: hashtagArray,
+        analysis: imageAnalysis,
+        processingDetails: imageEffects.description
+      })
+    }
+
     return NextResponse.json({
       success: true,
-      processedImage: image, // 本来はAIで加工した画像
-      caption: 'AI生成キャプション（ダミー）',
-      hashtags: ['#AI', '#ダミー'],
-      analysis: '画像解析結果（ダミー）',
-      processingDetails: 'エフェクト適用: ' + effectStrength,
+      processedImage,
+      caption,
+      hashtags: hashtagArray,
+      analysis: imageAnalysis,
+      processingDetails: imageEffects.description,
+      imageEffects,
       fromCache: false,
       processingTime: Date.now() - startTime
     })
+
   } catch (error) {
+    console.error('AI処理エラー:', error)
     return NextResponse.json(
-      { error: 'AI処理でエラーが発生しました', details: error instanceof Error ? error.message : String(error) },
+      { 
+        error: 'AI処理でエラーが発生しました', 
+        details: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }
@@ -157,7 +272,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    message: 'AI Processing API (Optimized)',
+    message: 'AI Processing API (Production Ready)',
     status: 'active',
     version: '2.0.0',
     features: [
