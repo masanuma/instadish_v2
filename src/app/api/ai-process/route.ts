@@ -82,44 +82,25 @@ function generateImageEffects(effectStrength: string) {
   }
 }
 
-// OpenAIクライアント生成（本番用）
 function createOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY!
   return new OpenAI({ apiKey })
 }
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now()
-  
   try {
     // 認証チェック
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
-                  request.cookies.get('token')?.value
-    
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') || request.cookies.get('auth_token')?.value
     if (!token) {
-      return NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
-
-    const store = await validateSession(token)
-    if (!store) {
-      return NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401 }
-      )
-    }
-
-    // OpenAI APIキーの確認
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI APIキーが設定されていません' },
-        { status: 500 }
-      )
+    const session = await validateSession(token)
+    if (!session) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
 
     const { image, businessType, effectStrength, regenerateCaption, regenerateHashtags, customPrompt } = await request.json()
+    const openai = createOpenAIClient()
     
     if (!image || !businessType || !effectStrength) {
       const missingParams = []
@@ -148,9 +129,6 @@ export async function POST(request: NextRequest) {
         })
       }
     }
-
-    // OpenAI クライアントの初期化
-    const openai = createOpenAIClient()
 
     // 再生成の場合は画像解析をスキップ
     let imageAnalysis = ''
@@ -189,7 +167,7 @@ export async function POST(request: NextRequest) {
         },
         {
           role: "user",
-          content: `画像分析: ${imageAnalysis}\n\n業種: ${businessType}\n\n${captionPrompt}\n\n店舗の固定キャプション: ${store.fixed_caption || ''}\n\n魅力的で集客につながるキャプションを生成してください。`
+          content: `画像分析: ${imageAnalysis}\n\n業種: ${businessType}\n\n${captionPrompt}\n\n店舗の固定キャプション: ${session.fixed_caption || ''}\n\n魅力的で集客につながるキャプションを生成してください。`
         }
       ],
       max_tokens: 200,
@@ -199,8 +177,8 @@ export async function POST(request: NextRequest) {
     let caption = captionResponse.choices[0]?.message?.content || ''
     
     // 固定キャプションの追加
-    if (store.fixed_caption) {
-      caption = `${caption}\n\n${store.fixed_caption}`
+    if (session.fixed_caption) {
+      caption = `${caption}\n\n${session.fixed_caption}`
     }
 
     // ハッシュタグ生成
@@ -223,8 +201,8 @@ export async function POST(request: NextRequest) {
     let hashtags = hashtagResponse.choices[0]?.message?.content || ''
     
     // 固定ハッシュタグの追加
-    if (store.fixed_hashtags) {
-      hashtags = `${hashtags}\n${store.fixed_hashtags}`
+    if (session.fixed_hashtags) {
+      hashtags = `${hashtags}\n${session.fixed_hashtags}`
     }
 
     // ハッシュタグを配列に変換
