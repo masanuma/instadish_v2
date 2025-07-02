@@ -124,8 +124,7 @@ export async function POST(request: NextRequest) {
       if (cachedResult) {
         return NextResponse.json({
           ...cachedResult,
-          fromCache: true,
-          processingTime: Date.now() - startTime
+          fromCache: true
         })
       }
     }
@@ -235,8 +234,7 @@ export async function POST(request: NextRequest) {
       analysis: imageAnalysis,
       processingDetails: imageEffects.description,
       imageEffects,
-      fromCache: false,
-      processingTime: Date.now() - startTime
+      fromCache: false
     })
 
   } catch (error) {
