@@ -11,10 +11,7 @@
   "dependencies": {
     "@stripe/stripe-js": "^7.4.0",
     "@supabase/supabase-js": "^2.50.1",
-<<<<<<< HEAD
-=======
     "axios": "^1.10.0",
->>>>>>> master
     "bcryptjs": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
     "next": "14.2.18",

@@ -28,20 +28,9 @@ export default function LoginPage() {
 
       if (response.ok) {
         // ログイン成功 - トークンをlocalStorageに保存
-        console.log('ログイン成功、レスポンス:', data)
-        console.log('受信したトークン:', data.token)
-        
         if (data.token) {
           localStorage.setItem('authToken', data.token)
-          console.log('トークンをlocalStorageに保存しました')
-          
-          // 保存されたか確認
-          const savedToken = localStorage.getItem('authToken')
-          console.log('保存確認:', savedToken ? '成功' : '失敗')
-        } else {
-          console.log('トークンが受信されませんでした')
         }
-        
         router.push('/dashboard')
       } else {
         setError(data.error || 'ログインに失敗しました')
@@ -112,8 +101,6 @@ export default function LoginPage() {
             店舗コードやパスワードが分からない場合は<br />
             店長にお問い合わせください
           </p>
-<<<<<<< HEAD
-=======
           <div className="mt-4 pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-600">
               新規アカウント作成は{' '}
@@ -122,7 +109,6 @@ export default function LoginPage() {
               </a>
             </p>
           </div>
->>>>>>> master
         </div>
       </div>
     </div>
