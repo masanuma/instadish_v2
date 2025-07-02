@@ -28,46 +28,63 @@ interface StoreWithSubscription extends Store {
   subscriptions?: Subscription[]
 }
 
+interface Stats {
+  totalStores: number
+  activeSubscriptions: number
+  trialingStores: number
+  canceledSubscriptions: number
+}
+
 export default function AdminDashboard() {
   const [stores, setStores] = useState<StoreWithSubscription[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedStore, setSelectedStore] = useState<StoreWithSubscription | null>(null)
   const [showStoreModal, setShowStoreModal] = useState(false)
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     totalStores: 0,
     activeSubscriptions: 0,
     trialingStores: 0,
     canceledSubscriptions: 0
   })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
   const router = useRouter()
 
+  // 管理者認証チェック
   useEffect(() => {
-    fetchStores()
-  }, [])
+    const token = localStorage.getItem('adminToken')
+    if (!token) {
+      router.push('/admin/login')
+      return
+    }
+    fetchStores(token)
+  }, [router])
 
-  const fetchStores = async () => {
+  const fetchStores = async (token: string) => {
     try {
       const response = await fetch('/api/admin/stores', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          'Authorization': `Bearer ${token}`
         }
       })
 
       if (response.status === 401) {
+        localStorage.removeItem('adminToken')
         router.push('/admin/login')
         return
       }
 
-      if (response.ok) {
-        const data = await response.json()
-        setStores(data.stores)
-        setStats(data.stats)
-      } else {
-        setError('店舗情報の取得に失敗しました')
+      if (!response.ok) {
+        throw new Error('店舗情報の取得に失敗しました')
       }
+
+      const data = await response.json()
+      setStores(data.stores)
+      setStats(data.stats)
     } catch (error) {
-      setError('ネットワークエラーが発生しました')
+      setError('データの取得に失敗しました')
+      console.error('店舗取得エラー:', error)
     } finally {
       setIsLoading(false)
     }
@@ -75,58 +92,87 @@ export default function AdminDashboard() {
 
   const handleStoreAction = async (storeId: string, action: string, value?: any) => {
     try {
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        router.push('/admin/login')
+        return
+      }
+
       const response = await fetch('/api/admin/stores/actions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          storeId,
-          action,
-          value
-        })
+        body: JSON.stringify({ storeId, action, value })
       })
 
-      if (response.ok) {
-        fetchStores() // 再取得
-        setShowStoreModal(false)
-        setSelectedStore(null)
-      } else {
-        const data = await response.json()
-        setError(data.error || '操作に失敗しました')
+      if (!response.ok) {
+        throw new Error('操作に失敗しました')
       }
+
+      const result = await response.json()
+      alert(result.message || '操作が完了しました')
+      
+      // データを再取得
+      fetchStores(token)
     } catch (error) {
-      setError('ネットワークエラーが発生しました')
+      alert('操作に失敗しました')
+      console.error('店舗操作エラー:', error)
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ja-JP')
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken')
+    router.push('/admin/login')
   }
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { color: 'bg-green-100 text-green-800', text: 'アクティブ' },
-      trialing: { color: 'bg-yellow-100 text-yellow-800', text: 'トライアル中' },
-      canceled: { color: 'bg-red-100 text-red-800', text: 'キャンセル' },
-      past_due: { color: 'bg-orange-100 text-orange-800', text: '支払い遅延' },
-      unpaid: { color: 'bg-gray-100 text-gray-800', text: '未払い' }
+  const filteredStores = stores.filter(store => {
+    const matchesSearch = store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.store_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.email.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    if (filterStatus === 'all') return matchesSearch
+    
+    const subscription = store.subscriptions?.[0]
+    if (filterStatus === 'active') return matchesSearch && subscription?.status === 'active'
+    if (filterStatus === 'trialing') return matchesSearch && subscription?.status === 'trialing'
+    if (filterStatus === 'canceled') return matchesSearch && subscription?.status === 'canceled'
+    if (filterStatus === 'no_subscription') return matchesSearch && !subscription
+    
+    return matchesSearch
+  })
+
+  const getStatusBadge = (subscription?: Subscription) => {
+    if (!subscription) {
+      return <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">未登録</span>
     }
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.unpaid
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
-        {config.text}
-      </span>
-    )
+    
+    switch (subscription.status) {
+      case 'active':
+        return <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">有効</span>
+      case 'trialing':
+        return <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">トライアル中</span>
+      case 'canceled':
+        return <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">停止</span>
+      case 'past_due':
+        return <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">支払い遅延</span>
+      default:
+        return <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">{subscription.status}</span>
+    }
   }
 
-  const getDaysLeft = (endDate?: string) => {
+  const getDaysLeft = (subscription?: Subscription) => {
+    if (!subscription) return null
+    
+    const endDate = subscription.trial_end || subscription.current_period_end
     if (!endDate) return null
-    const end = new Date(endDate)
+    
     const now = new Date()
+    const end = new Date(endDate)
     const diffTime = end.getTime() - now.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
     return diffDays > 0 ? diffDays : 0
   }
 
@@ -134,7 +180,7 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">読み込み中...</p>
         </div>
       </div>
@@ -144,25 +190,31 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ヘッダー */}
-      <header className="bg-white shadow-sm">
+      <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">🔧 管理者ダッシュボード</h1>
-              <p className="text-sm text-gray-600">InstaDish Pro 管理画面</p>
+              <h1 className="text-2xl font-bold text-gray-900">InstaDish Pro 管理者ダッシュボード</h1>
+              <p className="text-gray-600">店舗管理・サブスクリプション管理</p>
             </div>
             <button
-              onClick={() => router.push('/admin/login')}
-              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+              onClick={handleLogout}
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
             >
               ログアウト
             </button>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* 統計カード */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
+
+        {/* 統計カード */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
@@ -186,7 +238,7 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">アクティブ</p>
+                <p className="text-sm font-medium text-gray-600">有効サブスク</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.activeSubscriptions}</p>
               </div>
             </div>
@@ -194,8 +246,8 @@ export default function AdminDashboard() {
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -214,18 +266,51 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">キャンセル</p>
+                <p className="text-sm font-medium text-gray-600">停止中</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.canceledSubscriptions}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 店舗一覧 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">店舗一覧</h2>
+        {/* 検索・フィルター */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">検索</label>
+                <input
+                  type="text"
+                  placeholder="店舗名、店舗コード、メールアドレスで検索..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ステータスフィルター</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">すべて</option>
+                  <option value="active">有効</option>
+                  <option value="trialing">トライアル中</option>
+                  <option value="canceled">停止</option>
+                  <option value="no_subscription">未登録</option>
+                </select>
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* 店舗一覧 */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">店舗一覧 ({filteredStores.length}件)</h2>
+          </div>
+          
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -234,7 +319,10 @@ export default function AdminDashboard() {
                     店舗情報
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    サブスクリプション
+                    ステータス
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    残り日数
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     登録日
@@ -245,54 +333,70 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {stores.map((store) => {
+                {filteredStores.map((store) => {
                   const subscription = store.subscriptions?.[0]
+                  const daysLeft = getDaysLeft(subscription)
+                  
                   return (
                     <tr key={store.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{store.name}</div>
-                          <div className="text-sm text-gray-500">コード: {store.store_code}</div>
+                          <div className="text-sm text-gray-500">{store.store_code}</div>
                           <div className="text-sm text-gray-500">{store.email}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {subscription ? (
-                          <div>
-                            {getStatusBadge(subscription.status)}
-                            {subscription.trial_end && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                トライアル終了: {formatDate(subscription.trial_end)}
-                                {getDaysLeft(subscription.trial_end) !== null && (
-                                  <span className="ml-2 text-orange-600">
-                                    (残り{getDaysLeft(subscription.trial_end)}日)
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {subscription.current_period_end && !subscription.trial_end && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                次回請求: {formatDate(subscription.current_period_end)}
-                              </div>
-                            )}
-                          </div>
+                      <td className="px-6 py-4">
+                        {getStatusBadge(subscription)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {daysLeft !== null ? (
+                          <span className={`text-sm ${daysLeft <= 7 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                            {daysLeft}日
+                          </span>
                         ) : (
-                          <span className="text-sm text-gray-500">サブスクリプションなし</span>
+                          <span className="text-sm text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(store.created_at)}
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {new Date(store.created_at).toLocaleDateString('ja-JP')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => {
-                            setSelectedStore(store)
-                            setShowStoreModal(true)
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          詳細
-                        </button>
+                      <td className="px-6 py-4">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedStore(store)
+                              setShowStoreModal(true)
+                            }}
+                            className="text-blue-600 hover:text-blue-900 text-sm"
+                          >
+                            詳細
+                          </button>
+                          {subscription && subscription.status === 'trialing' && (
+                            <button
+                              onClick={() => handleStoreAction(store.id, 'extend_trial', 7)}
+                              className="text-green-600 hover:text-green-900 text-sm"
+                            >
+                              7日延長
+                            </button>
+                          )}
+                          {subscription && subscription.status === 'active' && (
+                            <button
+                              onClick={() => handleStoreAction(store.id, 'cancel_subscription')}
+                              className="text-red-600 hover:text-red-900 text-sm"
+                            >
+                              停止
+                            </button>
+                          )}
+                          {subscription && subscription.status === 'canceled' && (
+                            <button
+                              onClick={() => handleStoreAction(store.id, 'activate_subscription')}
+                              className="text-green-600 hover:text-green-900 text-sm"
+                            >
+                              再開
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -330,30 +434,36 @@ export default function AdminDashboard() {
                   <label className="block text-sm font-medium text-gray-700">電話番号</label>
                   <p className="text-sm text-gray-900">{selectedStore.phone || '未設定'}</p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">登録日</label>
+                  <p className="text-sm text-gray-900">
+                    {new Date(selectedStore.created_at).toLocaleString('ja-JP')}
+                  </p>
+                </div>
+                {selectedStore.subscriptions?.[0] && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">サブスクリプション</label>
+                    <div className="mt-1">
+                      {getStatusBadge(selectedStore.subscriptions[0])}
+                      {getDaysLeft(selectedStore.subscriptions[0]) !== null && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          残り {getDaysLeft(selectedStore.subscriptions[0])} 日
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="mt-6 flex justify-end space-x-3">
+              <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setShowStoreModal(false)}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md text-sm font-medium"
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
                 >
                   閉じる
-                </button>
-                <button
-                  onClick={() => handleStoreAction(selectedStore.id, 'suspend')}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  停止
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* エラーメッセージ */}
-      {error && (
-        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-md shadow-lg">
-          {error}
         </div>
       )}
     </div>

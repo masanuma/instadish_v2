@@ -20,6 +20,8 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const router = useRouter()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -28,21 +30,43 @@ export default function RegisterPage() {
       ...prev,
       [name]: value
     }))
+    // エラーメッセージをクリア
+    if (error) setError('')
   }
 
   const validateForm = () => {
+    // 店舗名チェック
     if (!formData.storeName.trim()) {
       setError('店舗名を入力してください')
       return false
     }
+    if (formData.storeName.length < 2) {
+      setError('店舗名は2文字以上で入力してください')
+      return false
+    }
+
+    // 店舗コードチェック
     if (!formData.storeCode.trim()) {
       setError('店舗コードを入力してください')
       return false
     }
+    if (!/^[a-zA-Z0-9_-]+$/.test(formData.storeCode)) {
+      setError('店舗コードは英数字、ハイフン、アンダースコアのみ使用可能です')
+      return false
+    }
+
+    // メールアドレスチェック
     if (!formData.email.trim()) {
       setError('メールアドレスを入力してください')
       return false
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError('有効なメールアドレスを入力してください')
+      return false
+    }
+
+    // パスワードチェック
     if (!formData.password) {
       setError('パスワードを入力してください')
       return false
@@ -51,10 +75,17 @@ export default function RegisterPage() {
       setError('パスワードは8文字以上で入力してください')
       return false
     }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      setError('パスワードは大文字、小文字、数字を含む必要があります')
+      return false
+    }
+
+    // パスワード確認チェック
     if (formData.password !== formData.confirmPassword) {
       setError('パスワードが一致しません')
       return false
     }
+
     return true
   }
 
@@ -91,10 +122,10 @@ export default function RegisterPage() {
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess('アカウントが正常に作成されました！ログインページに移動します...')
+        setSuccess('アカウントが正常に作成されました！30日間の無料トライアルが開始されました。ログインページに移動します...')
         setTimeout(() => {
           router.push('/login')
-        }, 2000)
+        }, 3000)
       } else {
         setError(data.error || 'アカウント作成に失敗しました')
       }
@@ -111,7 +142,20 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">InstaDish Pro</h1>
           <p className="text-gray-600">新規アカウント作成</p>
+          <p className="text-sm text-green-600 mt-2">✨ 30日間の無料トライアル付き</p>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
+            {success}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 基本情報 */}
@@ -146,6 +190,7 @@ export default function RegisterPage() {
                 placeholder="例：restaurant001"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">英数字、ハイフン、アンダースコアのみ</p>
             </div>
           </div>
 
@@ -170,32 +215,51 @@ export default function RegisterPage() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 パスワード <span className="text-red-500">*</span>
               </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                placeholder="8文字以上"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 pr-10"
+                  placeholder="8文字以上"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? "🙈" : "👁️"}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">大文字、小文字、数字を含む8文字以上</p>
             </div>
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
                 パスワード確認 <span className="text-red-500">*</span>
               </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                placeholder="パスワードを再入力"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 pr-10"
+                  placeholder="パスワードを再入力"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showConfirmPassword ? "🙈" : "👁️"}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -277,18 +341,6 @@ export default function RegisterPage() {
               placeholder="#美味しい #レストラン #おすすめ"
             />
           </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
-              {success}
-            </div>
-          )}
 
           <button
             type="submit"

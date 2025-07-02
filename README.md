@@ -325,7 +325,6 @@ NEXT_PUBLIC_APP_URL=https://your-app-domain.com
 - 管理者による手動課金/無料化も可能
 
 ---
->>>>>>> master
 
 ## 🤝 貢献
 
