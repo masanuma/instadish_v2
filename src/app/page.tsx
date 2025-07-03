@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import AdvancedImageEditor from './components/AdvancedImageEditor'
+import InstagramOptimizer from './components/AdvancedImageEditor'
 
 // エフェクト強度選択肢
 const EFFECT_STRENGTHS = [
@@ -31,7 +31,8 @@ export default function Home() {
   const [storeName, setStoreName] = useState<string>('')
   const [processingTime, setProcessingTime] = useState<number>(0)
   const [fromCache, setFromCache] = useState<boolean>(false)
-  const [showAdvancedEditor, setShowAdvancedEditor] = useState<boolean>(false)
+  const [showInstagramOptimizer, setShowInstagramOptimizer] = useState<boolean>(false)
+  const [optimizationResult, setOptimizationResult] = useState<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ページ読み込み時に保存された設定を復元 & 認証状態チェック
@@ -87,15 +88,22 @@ export default function Home() {
         setPhotographyAdvice('')
         setImageEffects('')
         setDownloadUrl('')
-        setShowAdvancedEditor(false)
+        setShowInstagramOptimizer(false)
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleAdvancedEdit = (processedImage: string) => {
-    setProcessedImage(processedImage)
-    setShowAdvancedEditor(false)
+  const handleInstagramOptimized = (optimizedImageUrl: string, analysisResult: any) => {
+    setProcessedImage(optimizedImageUrl)
+    setOptimizationResult(analysisResult)
+    setShowInstagramOptimizer(false)
+    
+    // 最適化結果を表示用に設定
+    if (analysisResult?.originalAnalysis) {
+      setImageAnalysis(`料理の種類: ${analysisResult.originalAnalysis.foodType}`)
+      setProcessingDetails(`適用した最適化: ${analysisResult.appliedOptimizations.join(', ')}`)
+    }
   }
 
   const processWithAI = async () => {
@@ -443,17 +451,17 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* AI画像編集ボタン */}
+              {/* Instagram最適化ボタン */}
               {selectedImage && (
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">🎨 高度な画像編集</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Instagram最適化</h2>
                   <button
-                    onClick={() => setShowAdvancedEditor(true)}
-                    className="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    onClick={() => setShowInstagramOptimizer(true)}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
                   >
-                    AI画像編集を開く
+                    🚀 AI自動最適化
                     <div className="text-sm mt-1 opacity-90">
-                      背景ボケ・照明最適化・構図調整など
+                      AIが分析してInstagram映えする画像に自動変換
                     </div>
                   </button>
                 </div>
@@ -498,64 +506,120 @@ export default function Home() {
               {/* 加工後画像 */}
               {processedImage && (
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">✨ AI加工後</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold mb-4">
+                    {optimizationResult ? '📸 Instagram最適化完了' : '✨ AI処理完了'}
+                  </h2>
                   
-                  {/* Before/After表示 */}
-                  <div className="space-y-4">
-                    {/* Before */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4">
                     <div>
-                      <h3 className="text-sm font-medium text-gray-600 mb-2">📷 加工前</h3>
-                      <img
-                        src={selectedImage || ''}
-                        alt="加工前の画像"
-                        className="w-full max-w-none object-contain rounded-lg shadow-sm border"
-                        style={{ height: 'auto', maxHeight: '400px', backgroundColor: '#f9fafb' }}
+                      <h3 className="font-medium mb-2">元画像</h3>
+                      <img 
+                        src={selectedImage || ''} 
+                        alt="元画像" 
+                        className="w-full h-48 sm:h-64 object-cover rounded-lg border"
                       />
                     </div>
-                    
-                    {/* After */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-medium text-green-600">✨ 加工後 (エフェクト適用)</h3>
-                        {downloadUrl && (
-                          <a
-                            href={downloadUrl}
-                            download="instadish-processed-image.jpg"
-                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
-                          >
-                            📥 DL
-                          </a>
-                        )}
-                      </div>
-                      <img
-                        src={processedImage}
-                        alt="AI加工後の画像"
-                        className="w-full max-w-none object-contain rounded-lg border-2 border-green-200 shadow-lg"
-                        style={{ 
-                          height: 'auto', 
-                          maxHeight: '400px',
-                          backgroundColor: '#f9fafb',
-                          filter: imageEffects || 'brightness(1.1) contrast(1.08) saturate(1.15)'
-                        }}
+                      <h3 className="font-medium mb-2">
+                        {optimizationResult ? 'Instagram最適化済み' : '処理済み画像'}
+                      </h3>
+                      <img 
+                        src={processedImage} 
+                        alt="処理済み画像" 
+                        className="w-full h-48 sm:h-64 object-cover rounded-lg border"
                       />
                     </div>
                   </div>
-                  
-                  {/* 加工詳細 */}
-                  {processingDetails && (
-                    <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                      <h3 className="font-medium text-green-800 mb-2 text-sm sm:text-base">🔧 画像加工詳細</h3>
-                      <p className="text-xs sm:text-sm text-green-700">{processingDetails}</p>
+
+                  {/* Instagram最適化結果の詳細表示 */}
+                  {optimizationResult && (
+                    <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                      <h3 className="text-lg font-semibold text-purple-900 mb-3">
+                        🤖 AI最適化レポート
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <h4 className="font-medium text-purple-800 mb-2">📊 画像分析結果</h4>
+                          <div className="space-y-1 text-purple-700">
+                            <p><strong>料理の種類:</strong> {optimizationResult.originalAnalysis.foodType}</p>
+                            {optimizationResult.originalAnalysis.compositionIssues.length > 0 && (
+                              <p><strong>構図の改善点:</strong> {optimizationResult.originalAnalysis.compositionIssues.join(', ')}</p>
+                            )}
+                            {optimizationResult.originalAnalysis.lightingIssues.length > 0 && (
+                              <p><strong>照明の改善点:</strong> {optimizationResult.originalAnalysis.lightingIssues.join(', ')}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="font-medium text-purple-800 mb-2">✨ 適用した最適化</h4>
+                          <ul className="space-y-1 text-purple-700">
+                            {optimizationResult.appliedOptimizations.map((opt: string, index: number) => (
+                              <li key={index} className="flex items-start">
+                                <span className="text-purple-500 mr-2">•</span>
+                                <span>{opt}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3 p-3 bg-white rounded-lg border border-purple-100">
+                        <p className="text-sm text-purple-600">
+                          💡 <strong>Instagram効果:</strong> この最適化により、より多くの「いいね」や「保存」を獲得しやすくなります。
+                          自然な照明と魅力的な構図で、料理の美味しさが伝わりやすくなっています。
+                        </p>
+                      </div>
                     </div>
                   )}
-                  
-                  {/* 撮影アドバイス */}
-                  {photographyAdvice && (
-                    <div className="mt-3 sm:mt-4 p-3 bg-purple-50 rounded-lg">
-                      <h3 className="font-medium text-purple-800 mb-2 text-sm sm:text-base">📸 撮影アドバイス</h3>
-                      <p className="text-xs sm:text-sm text-purple-700 whitespace-pre-line">{photographyAdvice}</p>
+
+                  {/* 従来の処理結果表示 */}
+                  {!optimizationResult && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4">
+                      {imageAnalysis && (
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <h3 className="font-medium text-blue-900 mb-2">🔍 画像分析</h3>
+                          <p className="text-blue-700 text-sm">{imageAnalysis}</p>
+                        </div>
+                      )}
+                      
+                      {processingDetails && (
+                        <div className="bg-green-50 p-4 rounded-lg">
+                          <h3 className="font-medium text-green-900 mb-2">⚙️ 処理詳細</h3>
+                          <p className="text-green-700 text-sm">{processingDetails}</p>
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  {/* ダウンロードボタン */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => {
+                        const link = document.createElement('a')
+                        link.href = processedImage
+                        link.download = `instadish-optimized-${Date.now()}.jpg`
+                        link.click()
+                      }}
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                      📥 最適化画像をダウンロード
+                    </button>
+                    
+                    {optimizationResult && (
+                      <button
+                        onClick={() => {
+                          const shareText = `InstaDish Proで料理写真を最適化しました！\n\n📊 料理: ${optimizationResult.originalAnalysis.foodType}\n✨ 最適化: ${optimizationResult.appliedOptimizations.join(', ')}\n\n#InstaDishPro #料理写真 #Instagram最適化`
+                          navigator.clipboard.writeText(shareText)
+                          alert('シェア用テキストをコピーしました！')
+                        }}
+                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                      >
+                        📋 シェア用テキストをコピー
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -702,11 +766,11 @@ export default function Home() {
       </div>
 
       {/* AI画像編集モーダル */}
-      {showAdvancedEditor && selectedImage && (
-        <AdvancedImageEditor
+      {showInstagramOptimizer && selectedImage && (
+        <InstagramOptimizer
           image={selectedImage}
-          onEdit={handleAdvancedEdit}
-          onCancel={() => setShowAdvancedEditor(false)}
+          onOptimized={handleInstagramOptimized}
+          onCancel={() => setShowInstagramOptimizer(false)}
         />
       )}
     </div>
