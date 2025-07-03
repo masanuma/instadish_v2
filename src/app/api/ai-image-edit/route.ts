@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '@/lib/auth'
 import { createOptimizedOpenAIClient } from '@/lib/ai-utils'
+import { supabase } from '@/lib/supabase'
 import OpenAI from 'openai'
 
 // ビルド時の事前レンダリングを無効にする
@@ -21,6 +22,9 @@ interface OptimizationResult {
   processingTime: number
   originalAnalysis: ImageAnalysisResult
   optimizedImage: string
+  caption: string
+  hashtags: string
+  photographyAdvice: string
 }
 
 export async function POST(request: NextRequest) {
@@ -53,8 +57,8 @@ export async function POST(request: NextRequest) {
     let result: any
     
     if (mode === 'auto') {
-      // 自動最適化モード
-      result = await performAutoOptimization(openai, image)
+      // 自動最適化モード（画像最適化＋キャプション生成）
+      result = await performCompleteOptimization(openai, image, session.id)
     } else {
       // 手動編集モード（既存機能）
       const { editType, options } = await request.json()
@@ -83,19 +87,168 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 自動最適化処理
-async function performAutoOptimization(openai: OpenAI, image: string): Promise<OptimizationResult> {
+// 完全最適化処理（画像最適化＋キャプション生成）
+async function performCompleteOptimization(openai: OpenAI, image: string, storeId: string): Promise<OptimizationResult> {
   // Step 1: 画像を分析
   const analysis = await analyzeImageForInstagram(openai, image)
   
   // Step 2: 分析結果に基づいて最適化を実行
   const optimizedImage = await applyOptimizations(openai, image, analysis)
   
+  // Step 3: 店舗情報を取得
+  const storeInfo = await getStoreInfo(storeId)
+  
+  // Step 4: キャプション・ハッシュタグを生成
+  const contentGeneration = await generateCaptionAndHashtags(openai, image, analysis, storeInfo)
+  
+  // Step 5: 撮影アドバイスを生成
+  const photographyAdvice = await generatePhotographyAdvice(openai, analysis)
+  
   return {
     appliedOptimizations: analysis.recommendedOptimizations,
     processingTime: 0, // 後で設定
     originalAnalysis: analysis,
-    optimizedImage
+    optimizedImage,
+    caption: contentGeneration.caption,
+    hashtags: contentGeneration.hashtags,
+    photographyAdvice
+  }
+}
+
+// 店舗情報取得
+async function getStoreInfo(storeId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('name, store_description, fixed_caption, fixed_hashtags')
+      .eq('id', storeId)
+      .single()
+    
+    if (error) {
+      console.error('店舗情報取得エラー:', error)
+      return null
+    }
+    
+    return data
+  } catch (error) {
+    console.error('店舗情報取得エラー:', error)
+    return null
+  }
+}
+
+// キャプション・ハッシュタグ生成
+async function generateCaptionAndHashtags(openai: OpenAI, image: string, analysis: ImageAnalysisResult, storeInfo: any) {
+  const prompt = `
+この${analysis.foodType}の写真について、Instagram投稿用のキャプションとハッシュタグを生成してください。
+
+店舗情報：
+- 店舗名: ${storeInfo?.name || '未設定'}
+- 店舗説明: ${storeInfo?.store_description || '美味しい料理を提供するお店'}
+- 固定キャプション: ${storeInfo?.fixed_caption || ''}
+- 固定ハッシュタグ: ${storeInfo?.fixed_hashtags || ''}
+
+画像分析結果：
+- 料理の種類: ${analysis.foodType}
+- 適用した最適化: ${analysis.recommendedOptimizations.join(', ')}
+
+以下のJSON形式で回答してください：
+{
+  "caption": "魅力的なキャプション（絵文字含む、150文字以内）",
+  "hashtags": "関連ハッシュタグ（#で区切り、20個以内）"
+}
+
+キャプションの要件：
+- 料理の美味しさが伝わる表現
+- 店舗の特徴を活かした内容
+- Instagram映えする絵文字を適度に使用
+- 食欲をそそる表現
+
+ハッシュタグの要件：
+- 料理名・食材・調理法関連
+- 店舗・地域関連
+- Instagram人気タグ
+- 固定ハッシュタグを必ず含める
+`
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: image } }
+          ]
+        }
+      ],
+      max_tokens: 800,
+      temperature: 0.7
+    })
+
+    const contentText = response.choices[0]?.message?.content
+    if (!contentText) {
+      throw new Error('キャプション生成結果を取得できませんでした')
+    }
+
+    // JSONを抽出
+    const jsonMatch = contentText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('キャプション生成結果のJSON形式が正しくありません')
+    }
+
+    const result = JSON.parse(jsonMatch[0])
+    
+    // 固定要素を追加
+    const finalCaption = storeInfo?.fixed_caption 
+      ? `${result.caption}\n\n${storeInfo.fixed_caption}`
+      : result.caption
+    
+    const finalHashtags = storeInfo?.fixed_hashtags
+      ? `${result.hashtags} ${storeInfo.fixed_hashtags}`
+      : result.hashtags
+
+    return {
+      caption: finalCaption,
+      hashtags: finalHashtags
+    }
+  } catch (error) {
+    console.error('キャプション生成エラー:', error)
+    // フォールバック
+    return {
+      caption: `美味しい${analysis.foodType}をご用意しました！✨ 心を込めて作った一品です。ぜひお楽しみください😊`,
+      hashtags: `#${analysis.foodType} #美味しい #グルメ #料理 #食べ物 #instafood #delicious #foodie #restaurant #yummy ${storeInfo?.fixed_hashtags || ''}`
+    }
+  }
+}
+
+// 撮影アドバイス生成
+async function generatePhotographyAdvice(openai: OpenAI, analysis: ImageAnalysisResult) {
+  const prompt = `
+この料理写真の分析結果に基づいて、次回の撮影時により良い写真を撮るためのアドバイスを生成してください。
+
+分析結果：
+- 料理の種類: ${analysis.foodType}
+- 構図の問題点: ${analysis.compositionIssues.join(', ')}
+- 照明の問題点: ${analysis.lightingIssues.join(', ')}
+- 色彩の問題点: ${analysis.colorIssues.join(', ')}
+- 背景の問題点: ${analysis.backgroundIssues.join(', ')}
+
+具体的で実践的なアドバイスを3-5点、各50文字以内で簡潔に教えてください。
+`
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 400,
+      temperature: 0.5
+    })
+
+    return response.choices[0]?.message?.content || '自然光での撮影、背景をシンプルに、料理を中心に配置することをお勧めします。'
+  } catch (error) {
+    console.error('撮影アドバイス生成エラー:', error)
+    return '自然光での撮影、背景をシンプルに、料理を中心に配置することをお勧めします。'
   }
 }
 

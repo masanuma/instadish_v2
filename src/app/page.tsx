@@ -94,15 +94,26 @@ export default function Home() {
     }
   }
 
-  const handleInstagramOptimized = (optimizedImageUrl: string, analysisResult: any) => {
+  const handleInstagramOptimized = (optimizedImageUrl: string, completeResult: any) => {
     setProcessedImage(optimizedImageUrl)
-    setOptimizationResult(analysisResult)
+    setOptimizationResult(completeResult)
     setShowInstagramOptimizer(false)
     
-    // 最適化結果を表示用に設定
-    if (analysisResult?.originalAnalysis) {
-      setImageAnalysis(`料理の種類: ${analysisResult.originalAnalysis.foodType}`)
-      setProcessingDetails(`適用した最適化: ${analysisResult.appliedOptimizations.join(', ')}`)
+    // 統合結果を表示用に設定
+    if (completeResult?.originalAnalysis) {
+      setImageAnalysis(`料理の種類: ${completeResult.originalAnalysis.foodType}`)
+      setProcessingDetails(`適用した最適化: ${completeResult.appliedOptimizations.join(', ')}`)
+    }
+    
+    // キャプション・ハッシュタグを設定
+    if (completeResult?.caption) {
+      setCaption(completeResult.caption)
+    }
+    if (completeResult?.hashtags) {
+      setHashtags(completeResult.hashtags)
+    }
+    if (completeResult?.photographyAdvice) {
+      setPhotographyAdvice(completeResult.photographyAdvice)
     }
   }
 
@@ -454,48 +465,16 @@ export default function Home() {
               {/* Instagram最適化ボタン */}
               {selectedImage && (
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Instagram最適化</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">🚀 Instagram完全最適化</h2>
                   <button
                     onClick={() => setShowInstagramOptimizer(true)}
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
                   >
-                    🚀 AI自動最適化
+                    🚀 完全最適化を開始
                     <div className="text-sm mt-1 opacity-90">
-                      AIが分析してInstagram映えする画像に自動変換
+                      画像最適化・キャプション・ハッシュタグを一括生成
                     </div>
                   </button>
-                </div>
-              )}
-
-              {/* AI処理ボタン */}
-              <button
-                onClick={processWithAI}
-                disabled={!selectedImage || isProcessing}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-3 sm:px-6 sm:py-4 rounded-lg font-semibold text-sm sm:text-lg hover:from-purple-700 hover:to-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isProcessing ? '🤖 AI処理中...' : '🚀 AI加工・キャプション生成'}
-              </button>
-
-              {/* 処理時間とキャッシュ情報表示 */}
-              {processingTime > 0 && (
-                <div className="bg-white rounded-lg shadow-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-gray-700">
-                        ⏱️ 処理時間: {processingTime}ms
-                      </span>
-                      {fromCache && (
-                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                          🚀 キャッシュから高速取得
-                        </span>
-                      )}
-                    </div>
-                    {processingTime < 1000 && !fromCache && (
-                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                        ⚡ 高速処理
-                      </span>
-                    )}
-                  </div>
                 </div>
               )}
             </div>
@@ -507,10 +486,10 @@ export default function Home() {
               {processedImage && (
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-semibold mb-4">
-                    {optimizationResult ? '📸 Instagram最適化完了' : '✨ AI処理完了'}
+                    {optimizationResult ? '🚀 Instagram完全最適化完了' : '✨ AI処理完了'}
                   </h2>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
                     <div>
                       <h3 className="font-medium mb-2">元画像</h3>
                       <img 
@@ -531,44 +510,93 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Instagram最適化結果の詳細表示 */}
+                  {/* Instagram完全最適化結果の詳細表示 */}
                   {optimizationResult && (
-                    <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
-                      <h3 className="text-lg font-semibold text-purple-900 mb-3">
-                        🤖 AI最適化レポート
-                      </h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <h4 className="font-medium text-purple-800 mb-2">📊 画像分析結果</h4>
-                          <div className="space-y-1 text-purple-700">
-                            <p><strong>料理の種類:</strong> {optimizationResult.originalAnalysis.foodType}</p>
-                            {optimizationResult.originalAnalysis.compositionIssues.length > 0 && (
-                              <p><strong>構図の改善点:</strong> {optimizationResult.originalAnalysis.compositionIssues.join(', ')}</p>
-                            )}
-                            {optimizationResult.originalAnalysis.lightingIssues.length > 0 && (
-                              <p><strong>照明の改善点:</strong> {optimizationResult.originalAnalysis.lightingIssues.join(', ')}</p>
-                            )}
+                    <div className="space-y-6">
+                      {/* AI最適化レポート */}
+                      <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                        <h3 className="text-lg font-semibold text-purple-900 mb-3">
+                          🤖 AI最適化レポート
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <h4 className="font-medium text-purple-800 mb-2">📊 画像分析結果</h4>
+                            <div className="space-y-1 text-purple-700">
+                              <p><strong>料理の種類:</strong> {optimizationResult.originalAnalysis.foodType}</p>
+                              {optimizationResult.originalAnalysis.compositionIssues.length > 0 && (
+                                <p><strong>構図の改善点:</strong> {optimizationResult.originalAnalysis.compositionIssues.join(', ')}</p>
+                              )}
+                              {optimizationResult.originalAnalysis.lightingIssues.length > 0 && (
+                                <p><strong>照明の改善点:</strong> {optimizationResult.originalAnalysis.lightingIssues.join(', ')}</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium text-purple-800 mb-2">✨ 適用した最適化</h4>
+                            <ul className="space-y-1 text-purple-700">
+                              {optimizationResult.appliedOptimizations.map((opt: string, index: number) => (
+                                <li key={index} className="flex items-start">
+                                  <span className="text-purple-500 mr-2">•</span>
+                                  <span>{opt}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
+                      </div>
+
+                      {/* キャプション・ハッシュタグ */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <h4 className="font-medium text-blue-900 mb-2">✍️ 生成されたキャプション</h4>
+                          <div className="bg-white p-3 rounded border text-blue-700 text-sm whitespace-pre-line">
+                            {optimizationResult.caption}
+                          </div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(optimizationResult.caption)
+                              alert('キャプションをコピーしました！')
+                            }}
+                            className="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+                          >
+                            📋 コピー
+                          </button>
+                        </div>
                         
-                        <div>
-                          <h4 className="font-medium text-purple-800 mb-2">✨ 適用した最適化</h4>
-                          <ul className="space-y-1 text-purple-700">
-                            {optimizationResult.appliedOptimizations.map((opt: string, index: number) => (
-                              <li key={index} className="flex items-start">
-                                <span className="text-purple-500 mr-2">•</span>
-                                <span>{opt}</span>
-                              </li>
-                            ))}
-                          </ul>
+                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                          <h4 className="font-medium text-green-900 mb-2">#️⃣ ハッシュタグ</h4>
+                          <div className="bg-white p-3 rounded border text-green-700 text-sm">
+                            {optimizationResult.hashtags}
+                          </div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(optimizationResult.hashtags)
+                              alert('ハッシュタグをコピーしました！')
+                            }}
+                            className="mt-2 text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
+                          >
+                            📋 コピー
+                          </button>
                         </div>
                       </div>
-                      
-                      <div className="mt-3 p-3 bg-white rounded-lg border border-purple-100">
-                        <p className="text-sm text-purple-600">
-                          💡 <strong>Instagram効果:</strong> この最適化により、より多くの「いいね」や「保存」を獲得しやすくなります。
-                          自然な照明と魅力的な構図で、料理の美味しさが伝わりやすくなっています。
+
+                      {/* 撮影アドバイス */}
+                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                        <h4 className="font-medium text-orange-900 mb-2">💡 撮影アドバイス</h4>
+                        <div className="bg-white p-3 rounded border text-orange-700 text-sm whitespace-pre-line">
+                          {optimizationResult.photographyAdvice}
+                        </div>
+                      </div>
+
+                      {/* Instagram効果説明 */}
+                      <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">
+                        <h4 className="font-medium text-pink-900 mb-2">📈 Instagram効果</h4>
+                        <p className="text-sm text-pink-700">
+                          💡 この最適化により、より多くの「いいね」や「保存」を獲得しやすくなります。
+                          AIが分析した結果に基づいて、照明・構図・色彩を最適化し、魅力的なキャプションとハッシュタグを生成しました。
+                          Instagram映えする投稿として、高いエンゲージメントが期待できます。
                         </p>
                       </div>
                     </div>
@@ -593,8 +621,8 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* ダウンロードボタン */}
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  {/* ダウンロード・シェアボタン */}
+                  <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-6 border-t">
                     <button
                       onClick={() => {
                         const link = document.createElement('a')
@@ -608,16 +636,29 @@ export default function Home() {
                     </button>
                     
                     {optimizationResult && (
-                      <button
-                        onClick={() => {
-                          const shareText = `InstaDish Proで料理写真を最適化しました！\n\n📊 料理: ${optimizationResult.originalAnalysis.foodType}\n✨ 最適化: ${optimizationResult.appliedOptimizations.join(', ')}\n\n#InstaDishPro #料理写真 #Instagram最適化`
-                          navigator.clipboard.writeText(shareText)
-                          alert('シェア用テキストをコピーしました！')
-                        }}
-                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-                      >
-                        📋 シェア用テキストをコピー
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            const shareText = `${optimizationResult.caption}\n\n${optimizationResult.hashtags}`
+                            navigator.clipboard.writeText(shareText)
+                            alert('投稿用テキスト（キャプション+ハッシュタグ）をコピーしました！')
+                          }}
+                          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                        >
+                          📋 投稿用テキストをコピー
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            const reportText = `InstaDish Pro - AI最適化レポート\n\n📊 料理: ${optimizationResult.originalAnalysis.foodType}\n✨ 最適化: ${optimizationResult.appliedOptimizations.join(', ')}\n💡 アドバイス: ${optimizationResult.photographyAdvice}\n\n#InstaDishPro #料理写真 #Instagram最適化`
+                            navigator.clipboard.writeText(reportText)
+                            alert('最適化レポートをコピーしました！')
+                          }}
+                          className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                        >
+                          📊 レポートをコピー
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
