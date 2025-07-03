@@ -4,16 +4,28 @@ import { useState } from 'react'
 
 interface AdvancedImageEditorProps {
   image: string
-  onEdit: (processedImage: string) => void
+  onEdit: (editedImageUrl: string) => void
   onCancel: () => void
 }
 
 interface AIEditOptions {
-  background_blur?: { blurStrength: number }
-  lighting_enhancement?: { lightingType: string }
-  composition_optimization?: { compositionStyle: string }
-  style_transfer?: { style: string }
-  texture_enhancement?: { enhancementType: string }
+  [key: string]: Record<string, any>
+}
+
+interface OptionConfig {
+  type: string
+  min?: number
+  max?: number
+  default: any
+  label: string
+  options?: Array<{ value: string; label: string }>
+}
+
+interface EditTypeConfig {
+  id: string
+  name: string
+  description: string
+  options: Record<string, OptionConfig>
 }
 
 export default function AdvancedImageEditor({ image, onEdit, onCancel }: AdvancedImageEditorProps) {
@@ -22,7 +34,7 @@ export default function AdvancedImageEditor({ image, onEdit, onCancel }: Advance
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
 
-  const editTypes = [
+  const editTypes: EditTypeConfig[] = [
     {
       id: 'background_blur',
       name: '背景ボケ効果',
@@ -116,7 +128,7 @@ export default function AdvancedImageEditor({ image, onEdit, onCancel }: Advance
     // デフォルトオプションを設定
     const editTypeConfig = editTypes.find(type => type.id === editType)
     if (editTypeConfig) {
-      const defaultOptions: any = {}
+      const defaultOptions: Record<string, any> = {}
       Object.entries(editTypeConfig.options).forEach(([key, config]) => {
         defaultOptions[key] = config.default
       })
@@ -128,7 +140,7 @@ export default function AdvancedImageEditor({ image, onEdit, onCancel }: Advance
     setEditOptions(prev => ({
       ...prev,
       [selectedEditType]: {
-        ...prev[selectedEditType as keyof AIEditOptions],
+        ...(prev[selectedEditType] || {}),
         [key]: value
       }
     }))
@@ -170,48 +182,49 @@ export default function AdvancedImageEditor({ image, onEdit, onCancel }: Advance
     }
   }
 
-  const renderOptionInput = (key: string, config: any) => {
-    switch (config.type) {
-      case 'range':
-        return (
-          <div key={key} className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {config.label}: {editOptions[selectedEditType as keyof AIEditOptions]?.[key] || config.default}
-            </label>
-            <input
-              type="range"
-              min={config.min}
-              max={config.max}
-              value={editOptions[selectedEditType as keyof AIEditOptions]?.[key] || config.default}
-              onChange={(e) => handleOptionChange(key, parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-        )
-      
-      case 'select':
-        return (
-          <div key={key} className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {config.label}
-            </label>
-            <select
-              value={editOptions[selectedEditType as keyof AIEditOptions]?.[key] || config.default}
-              onChange={(e) => handleOptionChange(key, e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {config.options.map((option: any) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )
-      
-      default:
-        return null
+  const renderOptionInput = (key: string, config: OptionConfig) => {
+    const currentValue = editOptions[selectedEditType]?.[key] || config.default
+
+    if (config.type === 'range') {
+      return (
+        <div key={key} className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            {config.label}: {currentValue}
+          </label>
+          <input
+            type="range"
+            min={config.min}
+            max={config.max}
+            value={currentValue}
+            onChange={(e) => handleOptionChange(key, parseInt(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
+        </div>
+      )
     }
+
+    if (config.type === 'select' && config.options) {
+      return (
+        <div key={key} className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            {config.label}
+          </label>
+          <select
+            value={currentValue}
+            onChange={(e) => handleOptionChange(key, e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {config.options.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )
+    }
+
+    return null
   }
 
   return (
