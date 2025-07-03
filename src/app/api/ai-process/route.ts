@@ -13,16 +13,14 @@ import OpenAI from 'openai'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-// エフェクト強度の設定
+// エフェクト強度の設定（3段階に統一）
 const EFFECT_PROMPTS = {
   weak: 'very subtle and natural enhancement',
   normal: 'moderate enhancement while keeping natural look',
-  strong: 'dramatic but tasteful enhancement',
-  instagram: 'Instagram-optimized enhancement with vibrant colors and shadows',
-  vivid: 'maximum impact enhancement with bold colors and dramatic effects'
+  strong: 'dramatic but tasteful enhancement'
 }
 
-// CSS フィルターを使用した画像処理のエフェクト生成
+// CSS フィルターを使用した画像処理のエフェクト生成（3段階に統一）
 function generateImageEffects(effectStrength: string) {
   switch (effectStrength) {
     case 'weak':
@@ -39,16 +37,6 @@ function generateImageEffects(effectStrength: string) {
       return {
         filter: 'brightness(1.25) contrast(1.18) saturate(1.35) hue-rotate(8deg) sepia(0.08)',
         description: '強力調整: 明度+25%, 彩度+35%, コントラスト+18%, 暖色調整 - インパクトのある美味しさ強調'
-      }
-    case 'instagram':
-      return {
-        filter: 'brightness(1.3) contrast(1.2) saturate(1.4) hue-rotate(10deg) sepia(0.1) drop-shadow(0 4px 8px rgba(0,0,0,0.15))',
-        description: 'インスタ映え調整: 明度+30%, 彩度+40%, コントラスト+20%, 暖色調整+影効果 - SNS最適化'
-      }
-    case 'vivid':
-      return {
-        filter: 'brightness(1.35) contrast(1.25) saturate(1.5) hue-rotate(12deg) sepia(0.12) drop-shadow(0 6px 12px rgba(0,0,0,0.2))',
-        description: 'ビビッド調整: 明度+35%, 彩度+50%, コントラスト+25%, 暖色調整+強影効果 - 最大インパクト'
       }
     default:
       return {

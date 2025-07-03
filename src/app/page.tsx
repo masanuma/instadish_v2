@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import AdvancedImageEditor from './components/AdvancedImageEditor'
 
 // エフェクト強度選択肢
 const EFFECT_STRENGTHS = [
@@ -30,6 +31,7 @@ export default function Home() {
   const [storeName, setStoreName] = useState<string>('')
   const [processingTime, setProcessingTime] = useState<number>(0)
   const [fromCache, setFromCache] = useState<boolean>(false)
+  const [showAdvancedEditor, setShowAdvancedEditor] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ページ読み込み時に保存された設定を復元 & 認証状態チェック
@@ -85,9 +87,15 @@ export default function Home() {
         setPhotographyAdvice('')
         setImageEffects('')
         setDownloadUrl('')
+        setShowAdvancedEditor(false)
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const handleAdvancedEdit = (processedImage: string) => {
+    setProcessedImage(processedImage)
+    setShowAdvancedEditor(false)
   }
 
   const processWithAI = async () => {
@@ -435,6 +443,22 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* AI画像編集ボタン */}
+              {selectedImage && (
+                <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+                  <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">🎨 高度な画像編集</h2>
+                  <button
+                    onClick={() => setShowAdvancedEditor(true)}
+                    className="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                  >
+                    AI画像編集を開く
+                    <div className="text-sm mt-1 opacity-90">
+                      背景ボケ・照明最適化・構図調整など
+                    </div>
+                  </button>
+                </div>
+              )}
+
               {/* AI処理ボタン */}
               <button
                 onClick={processWithAI}
@@ -676,6 +700,15 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* AI画像編集モーダル */}
+      {showAdvancedEditor && selectedImage && (
+        <AdvancedImageEditor
+          image={selectedImage}
+          onEdit={handleAdvancedEdit}
+          onCancel={() => setShowAdvancedEditor(false)}
+        />
+      )}
     </div>
   )
 }
