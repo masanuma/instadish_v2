@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import React from 'react'
 
 interface Store {
   id: string
@@ -49,6 +50,9 @@ export default function AdminDashboard() {
   })
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [showPasswordForm, setShowPasswordForm] = useState<string | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const passwordInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   // 管理者認証チェック
@@ -126,6 +130,66 @@ export default function AdminDashboard() {
     localStorage.removeItem('adminToken')
     router.push('/admin/login')
   }
+
+  const handleDeleteStore = async (storeId: string) => {
+    if (!window.confirm('本当にこの店舗を削除しますか？（論理削除）')) return;
+    try {
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+      const res = await fetch('/api/store/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ storeId })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || '削除に失敗しました');
+        return;
+      }
+      alert('店舗を削除しました');
+      fetchStores(token);
+    } catch (e) {
+      alert('削除時にエラーが発生しました');
+    }
+  };
+
+  const handleUpdatePassword = async (userId: string) => {
+    if (!newPassword) {
+      alert('新しいパスワードを入力してください');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+      const res = await fetch('/api/admin/users/update-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId, newPassword })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'パスワード更新に失敗しました');
+        return;
+      }
+      alert('パスワードを更新しました');
+      setShowPasswordForm(null);
+      setNewPassword('');
+    } catch (e) {
+      alert('更新時にエラーが発生しました');
+    }
+  };
 
   const filteredStores = stores.filter(store => {
     const matchesSearch = store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -395,6 +459,19 @@ export default function AdminDashboard() {
                             >
                               再開
                             </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteStore(store.id)}
+                            className="text-red-500 hover:underline ml-2"
+                          >
+                            削除
+                          </button>
+                          {showPasswordForm === store.id && (
+                            <div className="mt-2 flex">
+                              <input type="password" ref={passwordInputRef} value={newPassword} onChange={e => setNewPassword(e.target.value)} className="border px-2 py-1 mr-2" placeholder="新パスワード" />
+                              <button onClick={() => handleUpdatePassword(store.id)} className="bg-blue-500 text-white px-3 py-1 rounded">更新</button>
+                              <button onClick={() => { setShowPasswordForm(null); setNewPassword(''); }} className="ml-2 text-gray-500">キャンセル</button>
+                            </div>
                           )}
                         </div>
                       </td>

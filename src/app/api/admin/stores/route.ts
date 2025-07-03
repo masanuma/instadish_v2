@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
           cancel_at_period_end
         )
       `)
+      .eq('is_deleted', false)
       .order('created_at', { ascending: false })
 
     if (storesError) {
