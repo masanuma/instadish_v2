@@ -32,6 +32,14 @@ export async function POST(request: NextRequest) {
 
     if (error || !admin) {
       console.log('管理者ユーザーが見つかりません:', { username, error })
+      
+      // デバッグ用：ユーザーが存在するかチェック
+      const { data: allAdmins, error: listError } = await supabase
+        .from('admin_users')
+        .select('username, is_active')
+      
+      console.log('全管理者ユーザー:', { allAdmins, listError })
+      
       return NextResponse.json(
         { error: 'ユーザー名またはパスワードが正しくありません' },
         { status: 401 }
