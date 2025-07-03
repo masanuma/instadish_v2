@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-
-// Supabaseクライアントのimport（必要に応じてパスを調整）
+import jwt from 'jsonwebtoken'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key'
+const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24時間
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +29,9 @@ export async function POST(request: NextRequest) {
       .eq('username', username)
       .eq('is_active', true)
       .single()
+
     if (error || !admin) {
+      console.log('管理者ユーザーが見つかりません:', { username, error })
       return NextResponse.json(
         { error: 'ユーザー名またはパスワードが正しくありません' },
         { status: 401 }
@@ -36,6 +40,8 @@ export async function POST(request: NextRequest) {
 
     // パスワード検証
     const isValid = await bcrypt.compare(password, admin.password_hash)
+    console.log('パスワード検証結果:', { username, isValid, passwordLength: password.length })
+    
     if (!isValid) {
       return NextResponse.json(
         { error: 'ユーザー名またはパスワードが正しくありません' },
@@ -43,11 +49,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // JWTトークン生成（簡易例）
-    // 本番ではセキュアな方法でトークンを生成・管理してください
-    const token = 'dummy-admin-token'
-    return NextResponse.json({ success: true, token })
-  } catch (e) {
-    return NextResponse.json({ error: 'ログインに失敗しました' }, { status: 500 })
+    // JWTトークン生成
+    const tokenPayload = {
+      adminId: admin.id,
+      username: admin.username,
+      type: 'admin',
+      exp: Math.floor(Date.now() / 1000) + (SESSION_DURATION / 1000)
+    }
+    
+    const token = jwt.sign(tokenPayload, JWT_SECRET)
+    const expiresAt = new Date(Date.now() + SESSION_DURATION).toISOString()
+
+    // セッションをDBに保存
+    const { error: sessionError } = await supabase
+      .from('admin_sessions')
+      .insert({
+        admin_id: admin.id,
+        token,
+        expires_at: expiresAt
+      })
+
+    if (sessionError) {
+      console.error('セッション保存エラー:', sessionError)
+      return NextResponse.json(
+        { error: 'セッション作成に失敗しました' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      token,
+      expiresAt,
+      admin: {
+        id: admin.id,
+        username: admin.username,
+        email: admin.email,
+        role: admin.role
+      }
+    })
+
+  } catch (error) {
+    console.error('管理者ログインエラー:', error)
+    return NextResponse.json(
+      { error: 'ログインに失敗しました' },
+      { status: 500 }
+    )
   }
 } 

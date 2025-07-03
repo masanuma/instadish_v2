@@ -7,6 +7,8 @@ import {
   standardizeErrorMessage,
   validateAIResponse
 } from '@/lib/ai-utils'
+import { validateSession } from '@/lib/auth'
+import OpenAI from 'openai'
 
 // ビルド時の事前レンダリングを無効にする
 export const dynamic = 'force-dynamic'
@@ -138,237 +140,174 @@ function generateMockAIResponse(type: string, businessType: string, customPrompt
   }
 }
 
+function createOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY!
+  return new OpenAI({ apiKey })
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   const searchParams = request.nextUrl.searchParams
   
   try {
-    const { image, businessType, effectStrength, regenerateCaption, regenerateHashtags, customPrompt } = await request.json()
-
-    // テスト用：キャッシュクリア機能（クエリパラメータで制御）
-    if (searchParams.get('clearCache') === 'true') {
-      await clearCache()
-      console.log('テスト用キャッシュクリアを実行しました')
-      return NextResponse.json({
-        success: true,
-        message: 'キャッシュがクリアされました',
-        timestamp: new Date().toISOString()
-      })
+    // 認証チェック
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') || request.cookies.get('auth_token')?.value
+    if (!token) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
+    const session = await validateSession(token)
+    if (!session) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+    }
+
+    const { image, businessType, effectStrength, testType } = await request.json()
+    const openai = createOpenAIClient()
     
-    if (!image || !businessType || !effectStrength) {
-      const missingParams = []
-      if (!image) missingParams.push('image')
-      if (!businessType) missingParams.push('businessType')
-      if (!effectStrength) missingParams.push('effectStrength')
-      
+    if (!image || !businessType || !effectStrength || !testType) {
       return NextResponse.json(
         { 
           error: '必要なパラメータが不足しています',
-          missingParams,
+          required: ['image', 'businessType', 'effectStrength', 'testType'],
           timestamp: new Date().toISOString()
         },
         { status: 400 }
       )
     }
 
-    // 無効な業種のチェック
-    if (!BUSINESS_PROMPTS[businessType as keyof typeof BUSINESS_PROMPTS]) {
-      return NextResponse.json(
-        { 
-          error: '無効な業種が指定されました',
-          invalidBusinessType: businessType,
-          validBusinessTypes: Object.keys(BUSINESS_PROMPTS),
-          timestamp: new Date().toISOString()
-        },
-        { status: 500 }
-      )
-    }
+    let result: any = {}
 
-    // 無効なエフェクト強度のチェック
-    if (!EFFECT_PROMPTS[effectStrength as keyof typeof EFFECT_PROMPTS]) {
-      return NextResponse.json(
-        { 
-          error: '無効なエフェクト強度が指定されました',
-          invalidEffectStrength: effectStrength,
-          validEffectStrengths: Object.keys(EFFECT_PROMPTS),
-          timestamp: new Date().toISOString()
-        },
-        { status: 500 }
-      )
-    }
+    if (testType === 'image-analysis') {
+      // 画像解析テスト
+      const analysisResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `あなたは料理写真の専門家です。以下の点を詳細に分析してください：
 
-    // キャッシュチェック（再生成でない場合のみ）
-    if (!regenerateCaption && !regenerateHashtags) {
-      const imageHash = generateImageHash(image)
-      const cachedResult = await getCachedResult(imageHash, businessType, effectStrength)
-      
-      if (cachedResult) {
-        console.log('キャッシュから結果を取得しました')
-        return NextResponse.json({
-          ...cachedResult,
-          fromCache: true,
-          processingTime: Date.now() - startTime
-        })
-      }
-    }
+1. 料理の種類と名前
+2. 食材の詳細（肉、魚、野菜、調味料など）
+3. 調理方法（焼く、煮る、揚げる、蒸すなど）
+4. 見た目の特徴（色、テクスチャ、盛り付け、器）
+5. 美味しそうに見えるポイント
+6. 季節感や旬の要素
+7. 文化的背景や地域性
+8. 栄養価や健康要素
+9. 価格帯の印象
+10. SNS投稿に適した魅力ポイント
 
-    // 再生成の場合は画像解析をスキップ
-    let imageAnalysis = ''
-    if (!regenerateCaption && !regenerateHashtags) {
-      // モック画像解析
-      const analysisResponse = await executeWithRetry(
-        () => measureExecutionTime(
-          () => Promise.resolve(generateMockAIResponse('analysis', businessType)),
-          '画像解析'
-        ),
-        '画像解析'
-      )
-
-      if (!validateAIResponse(analysisResponse)) {
-        throw new Error('画像解析の結果が無効です')
-      }
-
-      imageAnalysis = analysisResponse.choices[0]?.message?.content || ''
-    } else {
-      imageAnalysis = `${businessType}の美味しそうな料理写真`
-    }
-
-    // 再生成の場合は必要な部分のみ実行
-    if (regenerateCaption) {
-      const captionResponse = await executeWithRetry(
-        () => measureExecutionTime(
-          () => Promise.resolve(generateMockAIResponse('caption', businessType, customPrompt)),
-          'キャプション再生成'
-        ),
-        'キャプション再生成'
-      )
-
-      if (!validateAIResponse(captionResponse)) {
-        throw new Error('キャプション生成の結果が無効です')
-      }
-
-      const caption = captionResponse.choices[0]?.message?.content || ''
-
-      return NextResponse.json({
-        success: true,
-        caption: caption.trim(),
-        processingTime: Date.now() - startTime
+分析結果は構造化して、キャプション生成に活用できる形で出力してください。`
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `この料理写真を詳細に分析してください。料理の種類、食材、調理方法、見た目の特徴、美味しそうに見えるポイントを詳しく教えてください。業種: ${businessType}`
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: image,
+                  detail: "high"
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.2
       })
+
+      result.analysis = analysisResponse.choices[0]?.message?.content || ''
     }
 
-    if (regenerateHashtags) {
-      const hashtagResponse = await executeWithRetry(
-        () => measureExecutionTime(
-          () => Promise.resolve(generateMockAIResponse('hashtags', businessType, customPrompt)),
-          'ハッシュタグ再生成'
-        ),
-        'ハッシュタグ再生成'
-      )
+    if (testType === 'caption-generation') {
+      // キャプション生成テスト
+      const captionResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `あなたはSNS投稿の専門家です。以下の条件で魅力的なキャプションを生成してください：
 
-      if (!validateAIResponse(hashtagResponse)) {
-        throw new Error('ハッシュタグ生成の結果が無効です')
-      }
+1. 料理の魅力を最大限に引き出す表現
+2. 感情に訴えかける言葉選び
+3. 具体的でイメージしやすい描写
+4. 業種に適したトーンとスタイル
+5. 集客につながる要素の盛り込み
+6. 適切な長さ（100-150文字程度）
+7. 絵文字の効果的な使用
+8. 季節感や旬の要素の活用
+9. 価格感や特別感の演出
+10. 行動を促す表現
 
-      const hashtagsText = hashtagResponse.choices[0]?.message?.content || ''
-      const hashtags = hashtagsText.split('\n')
-        .filter((tag: string) => tag.trim())
-        .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
-        .slice(0, 10)
-
-      return NextResponse.json({
-        success: true,
-        hashtags,
-        processingTime: Date.now() - startTime
+キャプションは自然で読みやすく、SNSでシェアしたくなる内容にしてください。`
+          },
+          {
+            role: "user",
+            content: `業種: ${businessType}
+この料理写真に最適な、魅力的で集客につながるキャプションを生成してください。絵文字も効果的に使用してください。`
+          }
+        ],
+        max_tokens: 250,
+        temperature: 0.8
       })
+
+      result.caption = captionResponse.choices[0]?.message?.content || ''
     }
 
-    // 通常の全体処理
-    // 画像加工設定の生成
-    const effectSettings = generateImageEffects(effectStrength)
-    const processedImage = image
-    const imageProcessingDetails = effectSettings.description
+    if (testType === 'hashtag-generation') {
+      // ハッシュタグ生成テスト
+      const hashtagResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `あなたはSNSマーケティングの専門家です。以下の条件で効果的なハッシュタグを生成してください：
 
-    // AI生成処理（並列実行 + リトライ機能）
-    const businessPrompt = BUSINESS_PROMPTS[businessType as keyof typeof BUSINESS_PROMPTS]
-    
-    const [captionResponse, hashtagResponse, photographyAdviceResponse] = await Promise.all([
-      // キャプション生成
-      executeWithRetry(
-        () => measureExecutionTime(
-          () => Promise.resolve(generateMockAIResponse('caption', businessType)),
-          'キャプション生成'
-        ),
-        'キャプション生成'
-      ),
-      
-      // ハッシュタグ生成
-      executeWithRetry(
-        () => measureExecutionTime(
-          () => Promise.resolve(generateMockAIResponse('hashtags', businessType)),
-          'ハッシュタグ生成'
-        ),
-        'ハッシュタグ生成'
-      ),
-      
-      // 撮影アドバイス生成
-      executeWithRetry(
-        () => measureExecutionTime(
-          () => Promise.resolve(generateMockAIResponse('advice', businessType)),
-          '撮影アドバイス生成'
-        ),
-        '撮影アドバイス生成'
-      )
-    ])
+1. 料理の種類に特化したハッシュタグ
+2. 業種・店舗タイプに適したハッシュタグ
+3. 人気で検索されやすいハッシュタグ
+4. 地域性を活かしたハッシュタグ
+5. 季節感や旬を表現するハッシュタグ
+6. 価格帯やターゲット層に適したハッシュタグ
+7. トレンドや流行を意識したハッシュタグ
+8. 具体的で検索しやすいハッシュタグ
+9. 感情や雰囲気を表現するハッシュタグ
+10. 店舗の特徴を活かしたハッシュタグ
 
-    // 結果の検証
-    if (!validateAIResponse(captionResponse) || !validateAIResponse(hashtagResponse) || !validateAIResponse(photographyAdviceResponse)) {
-      throw new Error('AI生成結果の一部が無効です')
+ハッシュタグは15-20個生成し、各ハッシュタグは改行で区切ってください。人気度の高いものから順に並べてください。`
+          },
+          {
+            role: "user",
+            content: `業種: ${businessType}
+この料理写真に最適な、人気で効果的なハッシュタグを15-20個生成してください。各ハッシュタグは改行で区切ってください。`
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.7
+      })
+
+      result.hashtags = hashtagResponse.choices[0]?.message?.content || ''
     }
 
-    // AI生成結果の取得
-    let aiCaption = captionResponse.choices[0]?.message?.content?.trim() || ''
-    const hashtagsText = hashtagResponse.choices[0]?.message?.content || ''
-    let aiHashtags = hashtagsText.split('\n')
-      .filter((tag: string) => tag.trim())
-      .map((tag: string) => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
-      .slice(0, 10)
-    const photographyAdvice = photographyAdviceResponse.choices[0]?.message?.content?.trim() || ''
-
-    const result = {
+    return NextResponse.json({
       success: true,
-      processedImage,
-      caption: aiCaption,
-      hashtags: aiHashtags,
-      analysis: imageAnalysis,
-      photographyAdvice,
+      testType,
       businessType,
       effectStrength,
-      imageEffects: effectSettings.filter,
-      processingDetails: imageProcessingDetails,
-      usedFixedCaption: false,
-      usedFixedHashtags: false,
-      processingTime: Date.now() - startTime
-    }
-
-    // 結果をキャッシュに保存
-    const imageHash = generateImageHash(image)
-    await cacheResult(imageHash, businessType, effectStrength, result)
-
-    return NextResponse.json(result)
+      result,
+      timestamp: new Date().toISOString()
+    })
 
   } catch (error) {
-    console.error('AI処理エラー:', error)
-    
-    const errorMessage = standardizeErrorMessage(error)
-    const processingTime = Date.now() - startTime
-    
+    console.error('AI処理テストエラー:', error)
     return NextResponse.json(
       { 
-        error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined,
-        timestamp: new Date().toISOString(),
-        processingTime
+        error: 'AI処理テストでエラーが発生しました', 
+        details: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
       },
       { status: 500 }
     )
@@ -377,17 +316,18 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    message: 'AI Processing Test API (Mock)',
+    message: 'AI Processing Test API',
     status: 'active',
-    version: '2.0.0-test',
+    version: '2.0.0',
+    testTypes: [
+      'image-analysis',
+      'caption-generation', 
+      'hashtag-generation'
+    ],
     features: [
-      '画像解析（モック）',
-      '業種別キャプション生成（モック）',
-      'ハッシュタグ生成（モック）',
-      '画像加工',
-      'キャッシュ機能（メモリ）',
-      'リトライ機能',
-      'エラーハンドリング強化'
+      '画像解析精度テスト',
+      'キャプション生成品質テスト',
+      'ハッシュタグ生成効果テスト'
     ]
   })
 } 
