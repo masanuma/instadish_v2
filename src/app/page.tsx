@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from 'react'
 import InstagramOptimizer from './components/AdvancedImageEditor'
 
-// エフェクト強度選択肢
+// エフェクト強度選択肢（5段階）
 const EFFECT_STRENGTHS = [
+  { id: 'very-weak', name: '最弱', description: 'ほぼ自然、上品な仕上がり' },
   { id: 'weak', name: '弱い', description: '自然な美味しさ強調' },
   { id: 'normal', name: '普通', description: '食欲をそそる魅力的な仕上がり' },
-  { id: 'strong', name: '強い', description: 'インパクト大！SNS映え重視' }
+  { id: 'strong', name: '強い', description: 'インパクト大！SNS映え重視' },
+  { id: 'very-strong', name: '最強', description: '鮮烈！極限まで魅力を引き出す' }
 ]
 
 export default function Home() {

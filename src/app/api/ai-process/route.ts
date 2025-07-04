@@ -13,16 +13,23 @@ import OpenAI from 'openai'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-// エフェクト強度の設定（3段階に統一）
+// エフェクト強度の設定（5段階に拡張）
 const EFFECT_PROMPTS = {
-  weak: 'very subtle and natural enhancement',
-  normal: 'moderate enhancement while keeping natural look',
-  strong: 'dramatic but tasteful enhancement'
+  'very-weak': 'minimal and ultra-natural enhancement, barely noticeable',
+  'weak': 'very subtle and natural enhancement',
+  'normal': 'moderate enhancement while keeping natural look',
+  'strong': 'dramatic but tasteful enhancement',
+  'very-strong': 'maximum impact enhancement, bold and vibrant'
 }
 
-// CSS フィルターを使用した画像処理のエフェクト生成（3段階に統一）
+// CSS フィルターを使用した画像処理のエフェクト生成（5段階に拡張）
 function generateImageEffects(effectStrength: string) {
   switch (effectStrength) {
+    case 'very-weak':
+      return {
+        filter: 'brightness(1.03) contrast(1.02) saturate(1.05) hue-rotate(1deg)',
+        description: '最小調整: 明度+3%, 彩度+5%, コントラスト+2% - ほぼ自然な上品仕上がり'
+      }
     case 'weak':
       return {
         filter: 'brightness(1.08) contrast(1.05) saturate(1.12) hue-rotate(3deg)',
@@ -37,6 +44,11 @@ function generateImageEffects(effectStrength: string) {
       return {
         filter: 'brightness(1.25) contrast(1.18) saturate(1.35) hue-rotate(8deg) sepia(0.08)',
         description: '強力調整: 明度+25%, 彩度+35%, コントラスト+18%, 暖色調整 - インパクトのある美味しさ強調'
+      }
+    case 'very-strong':
+      return {
+        filter: 'brightness(1.35) contrast(1.25) saturate(1.45) hue-rotate(12deg) sepia(0.15)',
+        description: '最強調整: 明度+35%, 彩度+45%, コントラスト+25%, 暖色強調 - 極限まで魅力を引き出す'
       }
     default:
       return {

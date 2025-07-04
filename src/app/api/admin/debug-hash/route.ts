@@ -2,13 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// 環境変数チェック
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+const supabase = supabaseUrl && supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null
 
 export async function POST(request: NextRequest) {
   try {
+    // 環境変数チェック
+    if (!supabase) {
+      return NextResponse.json(
+        { error: '環境変数が設定されていません' },
+        { status: 500 }
+      )
+    }
+
     const { action, password, hash } = await request.json()
 
     if (action === 'generate') {
@@ -38,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'check-db') {
       // DBのハッシュ値を確認
-      const { data: admin, error } = await supabase
+      const { data: admin, error } = await supabase!
         .from('admin_users')
         .select('username, password_hash, is_active')
         .eq('username', 'admin')
@@ -69,7 +80,7 @@ export async function POST(request: NextRequest) {
       const saltRounds = 10
       const newHash = await bcrypt.hash(newPassword, saltRounds)
 
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from('admin_users')
         .update({ password_hash: newHash })
         .eq('username', 'admin')

@@ -3,13 +3,24 @@ import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
 import { validateAdminSession } from '@/lib/admin-auth';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// 環境変数チェック
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabase = supabaseUrl && supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
 
 export async function POST(request: NextRequest) {
   try {
+    // 環境変数チェック
+    if (!supabase) {
+      return NextResponse.json(
+        { error: '環境変数が設定されていません' },
+        { status: 500 }
+      );
+    }
+
     // 認証チェック
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -31,7 +42,7 @@ export async function POST(request: NextRequest) {
     const hash = await bcrypt.hash(newPassword, 10);
 
     // DB更新
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('users')
       .update({ password_hash: hash })
       .eq('id', userId);
