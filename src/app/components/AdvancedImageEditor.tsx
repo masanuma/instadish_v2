@@ -40,7 +40,7 @@ export default function InstagramOptimizer({ image, onOptimized, onCancel }: Ins
     try {
       setProcessingStage('画像を分析中...')
       
-      const token = localStorage.getItem('auth_token')
+      const token = localStorage.getItem('authToken')
       const response = await fetch('/api/ai-image-edit', {
         method: 'POST',
         headers: {
