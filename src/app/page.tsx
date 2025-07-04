@@ -494,14 +494,14 @@ export default function Home() {
               {/* Instagram最適化ボタン */}
               {selectedImage && (
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">🚀 Instagram完全最適化</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">🚀 SNS最適化</h2>
                   
                   {/* 処理中表示 */}
                   {isInstagramOptimizing && (
                     <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md mb-4">
                       <div className="flex items-center">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
-                        Instagram完全最適化中...
+                        SNS最適化中...
                       </div>
                       <p className="text-sm mt-1">
                         処理に60秒ほどかかる場合があります
@@ -518,7 +518,7 @@ export default function Home() {
                         : 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white'
                     }`}
                   >
-                    {isInstagramOptimizing ? '最適化中...' : '🚀 完全最適化を開始'}
+                                         {isInstagramOptimizing ? '最適化中...' : '🚀 SNS最適化を開始'}
                     {!isInstagramOptimizing && (
                       <div className="text-sm mt-1 opacity-90">
                         画像最適化・キャプション・ハッシュタグを一括生成
@@ -536,31 +536,31 @@ export default function Home() {
               {processedImage && (
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-semibold mb-4">
-                    {optimizationResult ? '🚀 Instagram完全最適化完了' : '✨ AI処理完了'}
+                    {optimizationResult ? '🚀 SNS最適化完了' : '✨ AI処理完了'}
                   </h2>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
+                  <div className="space-y-6 mb-6">
                     <div>
-                      <h3 className="font-medium mb-2">元画像</h3>
+                      <h3 className="font-medium mb-3">元画像</h3>
                       <img 
                         src={selectedImage || ''} 
                         alt="元画像" 
-                        className="w-full h-48 sm:h-64 object-cover rounded-lg border"
+                        className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-lg border shadow-lg"
                       />
                     </div>
                     <div>
-                      <h3 className="font-medium mb-2">
-                        {optimizationResult ? 'Instagram最適化済み' : '処理済み画像'}
+                      <h3 className="font-medium mb-3">
+                        {optimizationResult ? 'SNS最適化済み' : '処理済み画像'}
                       </h3>
                       <img 
                         src={processedImage} 
                         alt="処理済み画像" 
-                        className="w-full h-48 sm:h-64 object-cover rounded-lg border"
+                        className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-lg border shadow-lg"
                       />
                     </div>
                   </div>
 
-                  {/* Instagram完全最適化結果の詳細表示 */}
+                                        {/* SNS最適化結果の詳細表示 */}
                   {optimizationResult && (
                     <div className="space-y-6">
                       {/* AI最適化レポート */}
@@ -599,11 +599,11 @@ export default function Home() {
 
                       {/* Instagram効果説明 */}
                       <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">
-                        <h4 className="font-medium text-pink-900 mb-2">📈 Instagram効果</h4>
+                        <h4 className="font-medium text-pink-900 mb-2">📈 SNS効果</h4>
                         <p className="text-sm text-pink-700">
                           💡 この最適化により、より多くの「いいね」や「保存」を獲得しやすくなります。
                           AIが分析した結果に基づいて、照明・構図・色彩を最適化し、魅力的なキャプションとハッシュタグを生成しました。
-                          Instagram映えする投稿として、高いエンゲージメントが期待できます。
+                          SNS映えする投稿として、高いエンゲージメントが期待できます。
                         </p>
                       </div>
                     </div>
@@ -611,7 +611,7 @@ export default function Home() {
 
                   {/* 従来の処理結果表示 */}
                   {!optimizationResult && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4">
+                    <div className="space-y-4 mb-4">
                       {imageAnalysis && (
                         <div className="bg-blue-50 p-4 rounded-lg">
                           <h3 className="font-medium text-blue-900 mb-2">🔍 画像分析</h3>

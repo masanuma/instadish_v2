@@ -220,7 +220,7 @@ async function getStoreInfo(storeId: string) {
 // キャプション・ハッシュタグ生成
 async function generateCaptionAndHashtags(openai: OpenAI, image: string, analysis: ImageAnalysisResult, storeInfo: any) {
   const prompt = `
-この${analysis.foodType}の写真について、Instagram投稿用のキャプションとハッシュタグを生成してください。
+この${analysis.foodType}の写真について、SNS投稿用のキャプションとハッシュタグを生成してください。
 
 店舗情報：
 - 店舗名: ${storeInfo?.name || '未設定'}
@@ -241,13 +241,13 @@ async function generateCaptionAndHashtags(openai: OpenAI, image: string, analysi
 キャプションの要件：
 - 料理の美味しさが伝わる表現
 - 店舗の特徴を活かした内容
-- Instagram映えする絵文字を適度に使用
+- SNS映えする絵文字を適度に使用
 - 食欲をそそる表現
 
 ハッシュタグの要件：
 - 料理名・食材・調理法関連
 - 店舗・地域関連
-- Instagram人気タグ
+- SNS人気タグ
 - 固定ハッシュタグを必ず含める
 `
 
@@ -353,11 +353,11 @@ async function generateContentAndAdvice(openai: OpenAI, image: string, analysis:
 - 【必須】画像分析結果の具体的な内容を反映（料理名・食材・見た目・特徴）
 - 【必須】店舗情報を活かした個性的な表現
 - 【表現】五感に訴える感覚的な描写（香り、食感、温度感など）
-- 【形式】Instagram映えする絵文字を適度に使用、100-150文字程度
+- 【形式】SNS映えする絵文字を適度に使用、200-250文字程度（詳細で魅力的な表現）
 
 ■ ハッシュタグ：
 - 日本語ハッシュタグ：5つ（写真に写っている料理・食材・調理法・見た目を具体的に反映）
-- 英語ハッシュタグ：5つ（グローバル対応、Instagram人気タグ）
+- 英語ハッシュタグ：5つ（グローバル対応、SNS人気タグ）
 - 合計10個のハッシュタグを生成（固定ハッシュタグは後で追加）
 
 ■ 撮影アドバイス：
@@ -469,16 +469,16 @@ async function generatePhotographyAdvice(openai: OpenAI, analysis: ImageAnalysis
   }
 }
 
-// Instagram向け画像分析
+// SNS向け画像分析
 async function analyzeImageForInstagram(openai: OpenAI, image: string): Promise<ImageAnalysisResult> {
   const analysisPrompt = `
-この料理写真を詳細に分析し、Instagram用キャプション・ハッシュタグ生成に必要な情報を収集してください。
+この料理写真を詳細に分析し、SNS用キャプション・ハッシュタグ生成に必要な情報を収集してください。
 
 【分析要件】
 1. 料理の正確な名前・種類（具体的に）
 2. 写真で確認できる食材・調理法・見た目の特徴
 3. 色彩・視覚的魅力・盛り付けの詳細
-4. Instagram最適化のための問題点と改善案
+4. SNS最適化のための問題点と改善案
 
 【JSON出力形式】
 {
@@ -493,7 +493,7 @@ async function analyzeImageForInstagram(openai: OpenAI, image: string): Promise<
 【重要】foodTypeは「料理」「パスタ」等の一般的な表現ではなく、写真から判断できる具体的な料理名を記載してください。
 食材、調理状態、見た目の特徴も詳細に含めて分析してください。
 
-Instagram映えする料理写真の基準：
+SNS映えする料理写真の基準：
 - 自然光または暖かい照明で美味しそうに見える
 - 背景がすっきりして料理が映える
 - 料理が中心に配置され構図が整っている

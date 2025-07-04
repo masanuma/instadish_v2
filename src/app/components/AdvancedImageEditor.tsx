@@ -83,7 +83,7 @@ export default function InstagramOptimizer({ image, onOptimized, onCancel }: Ins
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
-              🚀 Instagram完全最適化
+              🚀 SNS最適化
             </h2>
             <button
               onClick={onCancel}
@@ -186,7 +186,7 @@ export default function InstagramOptimizer({ image, onOptimized, onCancel }: Ins
                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-700 mr-2"></div>
-                    {processingStage || 'Instagram完全最適化中...'}
+                    {processingStage || 'SNS最適化中...'}
                   </div>
                   <p className="text-sm mt-1">
                     処理には60秒程度かかる場合があります
@@ -213,7 +213,7 @@ export default function InstagramOptimizer({ image, onOptimized, onCancel }: Ins
                   : 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600'
               }`}
             >
-              {isProcessing ? '最適化中...' : '🚀 Instagram完全最適化を開始'}
+              {isProcessing ? '最適化中...' : '🚀 SNS最適化を開始'}
             </button>
           </div>
         </div>
