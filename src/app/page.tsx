@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import InstagramOptimizer from './components/AdvancedImageEditor'
+// import InstagramOptimizer from './components/AdvancedImageEditor' // 削除
 
 // エフェクト強度選択肢（5段階）
 const EFFECT_STRENGTHS = [
@@ -17,12 +17,12 @@ export default function Home() {
   const [processedImage, setProcessedImage] = useState<string | null>(null)
   const [businessType, setBusinessType] = useState<string>('restaurant') // 固定値
   const [effectStrength, setEffectStrength] = useState<string>('normal')
-  const [caption, setCaption] = useState<string>('')
-  const [hashtags, setHashtags] = useState<string>('')
+  const [caption, setCaption] = useState<string | null>(null)
+  const [hashtags, setHashtags] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [imageAnalysis, setImageAnalysis] = useState<string>('')
-  const [processingDetails, setProcessingDetails] = useState<string>('')
-  const [photographyAdvice, setPhotographyAdvice] = useState<string>('')
+  const [imageAnalysis, setImageAnalysis] = useState<string | null>(null)
+  const [processingDetails, setProcessingDetails] = useState<string | null>(null)
+  const [photographyAdvice, setPhotographyAdvice] = useState<string | null>(null)
   const [imageEffects, setImageEffects] = useState<string>('')
   const [downloadUrl, setDownloadUrl] = useState<string>('')
   const [showCaptionPrompt, setShowCaptionPrompt] = useState<boolean>(false)
@@ -33,8 +33,8 @@ export default function Home() {
   const [storeName, setStoreName] = useState<string>('')
   const [processingTime, setProcessingTime] = useState<number>(0)
   const [fromCache, setFromCache] = useState<boolean>(false)
-  const [showInstagramOptimizer, setShowInstagramOptimizer] = useState<boolean>(false)
   const [optimizationResult, setOptimizationResult] = useState<any>(null)
+  const [isInstagramOptimizing, setIsInstagramOptimizing] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ページ読み込み時に保存された設定を復元 & 認証状態チェック
@@ -90,42 +90,67 @@ export default function Home() {
         setPhotographyAdvice('')
         setImageEffects('')
         setDownloadUrl('')
-        setShowInstagramOptimizer(false)
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleInstagramOptimized = (optimizedImageUrl: string, completeResult: any) => {
-    setProcessedImage(optimizedImageUrl)
-    setOptimizationResult(completeResult)
-    setShowInstagramOptimizer(false)
-    
-    // 統合結果を表示用に設定
-    if (completeResult?.originalAnalysis) {
-      setImageAnalysis(`料理の種類: ${completeResult.originalAnalysis.foodType}`)
-      setProcessingDetails(`適用した最適化: ${completeResult.appliedOptimizations.join(', ')}`)
-    }
-    
-    // キャプション・ハッシュタグを設定
-    if (completeResult?.caption) {
-      setCaption(completeResult.caption)
-    }
-    if (completeResult?.hashtags) {
-      setHashtags(completeResult.hashtags)
-    }
-    if (completeResult?.photographyAdvice) {
-      setPhotographyAdvice(completeResult.photographyAdvice)
+  const handleInstagramOptimization = async () => {
+    if (!selectedImage) return
+
+    setIsInstagramOptimizing(true)
+    setProcessedImage(null)
+    setOptimizationResult(null)
+    setCaption(null)
+    setHashtags(null)
+    setPhotographyAdvice(null)
+
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch('/api/ai-image-edit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          image: selectedImage,
+          mode: 'auto'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Instagram最適化に失敗しました')
+      }
+
+      const data = await response.json()
+      
+      if (data.success && data.result) {
+        setProcessedImage(data.result.optimizedImage)
+        setOptimizationResult(data.result)
+        setCaption(data.result.caption)
+        setHashtags(data.result.hashtags)
+        setPhotographyAdvice(data.result.photographyAdvice)
+      } else {
+        throw new Error('最適化結果を取得できませんでした')
+      }
+
+    } catch (error) {
+      console.error('Instagram最適化エラー:', error)
+      alert(error instanceof Error ? error.message : 'Instagram最適化に失敗しました')
+    } finally {
+      setIsInstagramOptimizing(false)
     }
   }
 
   const processWithAI = async () => {
     if (!selectedImage) return
-    
+
     setIsProcessing(true)
     setProcessingTime(0)
     setFromCache(false)
-    
+
     try {
       const response = await fetch('/api/ai-process', {
         method: 'POST',
@@ -138,7 +163,7 @@ export default function Home() {
           effectStrength
         })
       })
-      
+
       if (response.ok) {
         const result = await response.json()
         setProcessedImage(result.processedImage)
@@ -193,18 +218,20 @@ export default function Home() {
 
   const copyCaption = async () => {
     try {
-      await navigator.clipboard.writeText(caption)
+      await navigator.clipboard.writeText(caption || '')
       alert('キャプションをコピーしました！')
     } catch (err) {
+      console.error('コピーエラー:', err)
       alert('コピーに失敗しました')
     }
   }
 
   const copyHashtags = async () => {
     try {
-      await navigator.clipboard.writeText(hashtags)
+      await navigator.clipboard.writeText(hashtags || '')
       alert('ハッシュタグをコピーしました！')
     } catch (err) {
+      console.error('コピーエラー:', err)
       alert('コピーに失敗しました')
     }
   }
@@ -468,14 +495,35 @@ export default function Home() {
               {selectedImage && (
                 <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">🚀 Instagram完全最適化</h2>
-                  <button
-                    onClick={() => setShowInstagramOptimizer(true)}
-                    className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-                  >
-                    🚀 完全最適化を開始
-                    <div className="text-sm mt-1 opacity-90">
-                      画像最適化・キャプション・ハッシュタグを一括生成
+                  
+                  {/* 処理中表示 */}
+                  {isInstagramOptimizing && (
+                    <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md mb-4">
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
+                        Instagram完全最適化中...
+                      </div>
+                      <p className="text-sm mt-1">
+                        処理に60秒ほどかかる場合があります
+                      </p>
                     </div>
+                  )}
+                  
+                  <button
+                    onClick={handleInstagramOptimization}
+                    disabled={isInstagramOptimizing}
+                    className={`w-full font-medium py-3 px-4 rounded-lg transition-colors ${
+                      isInstagramOptimizing
+                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white'
+                    }`}
+                  >
+                    {isInstagramOptimizing ? '最適化中...' : '🚀 完全最適化を開始'}
+                    {!isInstagramOptimizing && (
+                      <div className="text-sm mt-1 opacity-90">
+                        画像最適化・キャプション・ハッシュタグを一括生成
+                      </div>
+                    )}
                   </button>
                 </div>
               )}
@@ -548,10 +596,6 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
-
-
-
-
 
                       {/* Instagram効果説明 */}
                       <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">
@@ -678,7 +722,7 @@ export default function Home() {
 
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                     <textarea
-                      value={caption}
+                      value={caption || ''}
                       onChange={(e) => setCaption(e.target.value)}
                       className="w-full h-24 sm:h-32 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="キャプションを編集できます..."
@@ -739,7 +783,7 @@ export default function Home() {
 
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                     <textarea
-                      value={hashtags.split(' ').filter((tag: string) => tag.trim() !== '').join('\n')}
+                      value={hashtags ? hashtags.split(' ').filter((tag: string) => tag.trim() !== '').join('\n') : ''}
                       onChange={(e) => setHashtags(e.target.value.split('\n').join(' '))}
                       className="w-full h-36 sm:h-48 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-xs sm:text-sm"
                       placeholder="ハッシュタグを編集できます..."
@@ -768,15 +812,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-      {/* AI画像編集モーダル */}
-      {showInstagramOptimizer && selectedImage && (
-        <InstagramOptimizer
-          image={selectedImage}
-          onOptimized={handleInstagramOptimized}
-          onCancel={() => setShowInstagramOptimizer(false)}
-        />
-      )}
     </div>
   )
 }
