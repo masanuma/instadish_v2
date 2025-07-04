@@ -326,52 +326,24 @@ Instagram映えする料理写真の特徴：
   }
 }
 
-// 分析結果に基づく最適化適用
+// 分析結果に基づく最適化適用（実際の画像処理）
 async function applyOptimizations(openai: OpenAI, image: string, analysis: ImageAnalysisResult): Promise<string> {
-  const optimizations = analysis.recommendedOptimizations
+  // 注意: 現在は元画像をそのまま返します
+  // 実際の画像処理（色調補正、照明調整など）は今後実装予定
   
-  // 最適化の優先度を決定
-  const optimizationPrompt = generateOptimizationPrompt(analysis, optimizations)
+  // TODO: 実際の画像処理ライブラリ（Sharp等）を使用して以下を実装
+  // - 色調補正（色相、彩度、明度）
+  // - 照明補正（コントラスト、明度）
+  // - フィルター効果（ワームトーン、クールトーンなど）
+  // - 元画像の形・文字・構造は一切変更しない
   
-  try {
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: optimizationPrompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "standard"
-    })
-    
-    return response.data?.[0]?.url || ''
-  } catch (error) {
-    console.error('最適化適用エラー:', error)
-    throw new Error('画像の最適化に失敗しました')
-  }
+  console.log('画像最適化（分析結果）:', analysis.recommendedOptimizations)
+  
+  // 現在は元画像をそのまま返す（形・文字を保持）
+  return image
 }
 
-// 最適化プロンプト生成
-function generateOptimizationPrompt(analysis: ImageAnalysisResult, optimizations: string[]): string {
-  const basePrompt = `Professional Instagram-worthy food photography of ${analysis.foodType}.`
-  
-  const optimizationInstructions = optimizations.map(opt => {
-    switch (opt) {
-      case '照明最適化':
-        return 'Perfect natural lighting with soft shadows, warm and inviting atmosphere'
-      case '色彩強調':
-        return 'Enhanced vibrant colors that make the food look fresh and appetizing'
-      case '背景ぼかし':
-        return 'Beautiful shallow depth of field with artistic background blur'
-      case '構図調整':
-        return 'Optimal composition with rule of thirds, balanced and visually appealing'
-      case 'テクスチャ強調':
-        return 'Enhanced food texture that looks delicious and mouth-watering'
-      default:
-        return opt
-    }
-  }).join(', ')
-  
-  return `${basePrompt} ${optimizationInstructions}. High quality, professional photography, Instagram-worthy, food styling perfection.`
-}
+
 
 // 手動編集処理（既存機能）
 async function performManualEdit(openai: OpenAI, image: string, editType: string, options: any) {
@@ -391,127 +363,78 @@ async function performManualEdit(openai: OpenAI, image: string, editType: string
   }
 }
 
-// 背景ボケ効果処理
+// 背景ボケ効果処理（実際の画像処理で実装予定）
 async function processBackgroundBlur(openai: OpenAI, image: string, options: any) {
+  // TODO: 実際の画像処理ライブラリで背景ぼかし効果を実装
+  // - 深度マップを使用した背景ぼかし
+  // - 元画像の形・文字・構造は一切変更しない
+  // - 背景部分のみをぼかし処理
+  
   const blurStrength = options.blurStrength || 50
-  const prompt = `Professional food photography with ${blurStrength}% background blur, 
-                 shallow depth of field, beautiful bokeh effect, studio lighting, 
-                 the food remains sharp and detailed while background is artistically blurred, 
-                 high quality, Instagram-worthy`
+  console.log(`背景ぼかし処理予定（強度: ${blurStrength}%）`)
   
-  const response = await openai.images.generate({
-    model: "dall-e-3",
-    prompt: prompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "standard"
-  })
-  
-  return response.data?.[0]
+  // 現在は元画像をそのまま返す
+  return { url: image }
 }
 
-// 照明最適化処理
+// 照明最適化処理（実際の画像処理で実装予定）
 async function processLightingEnhancement(openai: OpenAI, image: string, options: any) {
+  // TODO: 実際の画像処理ライブラリで照明調整を実装
+  // - 明度・コントラスト調整
+  // - 色温度調整（暖色・寒色）
+  // - 影・ハイライト調整
+  // - 元画像の形・文字・構造は一切変更しない
+  
   const lightingType = options.lightingType || 'natural'
+  console.log(`照明最適化処理予定（タイプ: ${lightingType}）`)
   
-  const lightingPrompts: Record<string, string> = {
-    natural: "Natural window lighting, soft shadows, warm atmosphere, golden hour effect",
-    studio: "Professional studio lighting, dramatic shadows, high contrast, magazine quality",
-    warm: "Warm golden hour lighting, cozy atmosphere, soft glow, romantic mood",
-    dramatic: "Dramatic side lighting, deep shadows, cinematic look, artistic lighting",
-    bright: "Bright cheerful lighting, minimal shadows, clean and fresh appearance"
-  }
-  
-  const prompt = `Food photography with ${lightingPrompts[lightingType]}, 
-                 enhanced lighting, professional quality, the food looks delicious and appetizing`
-  
-  const response = await openai.images.generate({
-    model: "dall-e-3",
-    prompt: prompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "standard"
-  })
-  
-  return response.data?.[0]
+  // 現在は元画像をそのまま返す
+  return { url: image }
 }
 
-// 構図最適化処理
+// 構図最適化処理（実際の画像処理で実装予定）
 async function processCompositionOptimization(openai: OpenAI, image: string, options: any) {
+  // TODO: 実際の画像処理ライブラリで構図調整を実装
+  // - トリミング（余分な部分をカット）
+  // - 配置調整（中央配置、三分割法など）
+  // - 元画像の形・文字・構造は一切変更しない
+  // - あくまでフレーミングのみの調整
+  
   const compositionStyle = options.compositionStyle || 'overhead'
+  console.log(`構図最適化処理予定（スタイル: ${compositionStyle}）`)
   
-  const compositionPrompts: Record<string, string> = {
-    overhead: "Overhead shot, flat lay composition, Instagram style, perfectly arranged",
-    angle45: "45-degree angle shot, dynamic composition, professional look, depth and dimension",
-    closeup: "Close-up macro shot, detailed texture, intimate feel, focus on details",
-    wide: "Wide shot with context, environmental storytelling, restaurant atmosphere",
-    centered: "Centered composition, balanced layout, minimalist approach, clean design"
-  }
-  
-  const prompt = `Food photography with ${compositionPrompts[compositionStyle]}, 
-                 professional composition, high quality, the food is the main focus`
-  
-  const response = await openai.images.edit({
-    model: "dall-e-3",
-    image: image as any,
-    prompt: prompt,
-    n: 1,
-    size: "1024x1024"
-  })
-  
-  return response.data?.[0]
+  // 現在は元画像をそのまま返す
+  return { url: image }
 }
 
-// スタイル転送処理
+// スタイル転送処理（実際の画像処理で実装予定）
 async function processStyleTransfer(openai: OpenAI, image: string, options: any) {
+  // TODO: 実際の画像処理ライブラリでスタイル調整を実装
+  // - 色調フィルター（ヴィンテージ、モダンなど）
+  // - 色温度・彩度調整
+  // - フィルム風効果（グレイン、ヴィネット）
+  // - 元画像の形・文字・構造は一切変更しない
+  
   const style = options.style || 'modern'
+  console.log(`スタイル転送処理予定（スタイル: ${style}）`)
   
-  const stylePrompts: Record<string, string> = {
-    vintage: "Vintage film photography style, warm tones, nostalgic atmosphere, classic look",
-    modern: "Modern minimalist style, clean lines, contemporary aesthetic, sleek design",
-    rustic: "Rustic farmhouse style, natural textures, earthy tones, homely feel",
-    elegant: "Elegant fine dining style, sophisticated presentation, luxury atmosphere",
-    casual: "Casual everyday style, relaxed atmosphere, approachable and friendly"
-  }
-  
-  const prompt = `Food photography in ${stylePrompts[style]}, 
-                 professional quality, the food looks delicious and appealing`
-  
-  const response = await openai.images.edit({
-    model: "dall-e-3",
-    image: image as any,
-    prompt: prompt,
-    n: 1,
-    size: "1024x1024"
-  })
-  
-  return response.data?.[0]
+  // 現在は元画像をそのまま返す
+  return { url: image }
 }
 
-// テクスチャ強調処理
+// テクスチャ強調処理（実際の画像処理で実装予定）
 async function processTextureEnhancement(openai: OpenAI, image: string, options: any) {
+  // TODO: 実際の画像処理ライブラリでテクスチャ強調を実装
+  // - シャープネス調整
+  // - ディテール強調
+  // - コントラスト調整
+  // - 元画像の形・文字・構造は一切変更しない
+  
   const enhancementType = options.enhancementType || 'general'
+  console.log(`テクスチャ強調処理予定（タイプ: ${enhancementType}）`)
   
-  const enhancementPrompts: Record<string, string> = {
-    general: "Enhanced food textures, detailed surface details, appetizing appearance",
-    crispy: "Enhanced crispy textures, crunchy appearance, satisfying texture",
-    smooth: "Enhanced smooth textures, creamy appearance, luxurious feel",
-    juicy: "Enhanced juicy textures, moist appearance, succulent look",
-    fresh: "Enhanced fresh textures, vibrant appearance, crisp and clean look"
-  }
-  
-  const prompt = `Food photography with ${enhancementPrompts[enhancementType]}, 
-                 professional quality, the food textures are enhanced and look delicious`
-  
-  const response = await openai.images.edit({
-    model: "dall-e-3",
-    image: image as any,
-    prompt: prompt,
-    n: 1,
-    size: "1024x1024"
-  })
-  
-  return response.data?.[0]
+  // 現在は元画像をそのまま返す
+  return { url: image }
 }
 
 export async function GET() {
