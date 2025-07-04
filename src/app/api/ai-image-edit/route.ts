@@ -334,12 +334,12 @@ async function applyOptimizations(openai: OpenAI, image: string, analysis: Image
   const optimizationPrompt = generateOptimizationPrompt(analysis, optimizations)
   
   try {
-    const response = await openai.images.edit({
+    const response = await openai.images.generate({
       model: "dall-e-3",
-      image: image as any,
       prompt: optimizationPrompt,
       n: 1,
-      size: "1024x1024"
+      size: "1024x1024",
+      quality: "standard"
     })
     
     return response.data?.[0]?.url || ''
@@ -399,12 +399,12 @@ async function processBackgroundBlur(openai: OpenAI, image: string, options: any
                  the food remains sharp and detailed while background is artistically blurred, 
                  high quality, Instagram-worthy`
   
-  const response = await openai.images.edit({
+  const response = await openai.images.generate({
     model: "dall-e-3",
-    image: image as any,
     prompt: prompt,
     n: 1,
-    size: "1024x1024"
+    size: "1024x1024",
+    quality: "standard"
   })
   
   return response.data?.[0]
@@ -425,12 +425,12 @@ async function processLightingEnhancement(openai: OpenAI, image: string, options
   const prompt = `Food photography with ${lightingPrompts[lightingType]}, 
                  enhanced lighting, professional quality, the food looks delicious and appetizing`
   
-  const response = await openai.images.edit({
+  const response = await openai.images.generate({
     model: "dall-e-3",
-    image: image as any,
     prompt: prompt,
     n: 1,
-    size: "1024x1024"
+    size: "1024x1024",
+    quality: "standard"
   })
   
   return response.data?.[0]
