@@ -214,16 +214,18 @@ export async function POST(request: NextRequest) {
           },
           {
             role: "user",
-            content: `画像分析: ${imageAnalysis}
+            content: `【画像分析結果】
+${imageAnalysis}
 
-店舗情報:
+【店舗情報】
 - 店舗名: ${session.name || '未設定'}
 - 店舗の特徴: ${session.store_description || '未設定'}
 - 固定キャプション: ${session.fixed_caption || 'なし'}
 
+【要求内容】
 ${captionPrompt}
 
-上記の情報を基に、魅力的で集客につながるキャプションを生成してください。絵文字も効果的に使用してください。`
+上記の画像分析結果で判明した「写真に写っている料理・食材・見た目・特徴」を具体的に反映し、店舗情報を活かした魅力的で集客につながるキャプションを生成してください。絵文字も効果的に使用してください。`
           }
         ],
         max_tokens: captionMaxTokens,
@@ -240,18 +242,22 @@ ${captionPrompt}
 
 以下の条件でハッシュタグを生成してください：
 
-1. 料理の種類に特化したハッシュタグ
-2. 店舗の特徴や雰囲気に適したハッシュタグ
-3. 人気で検索されやすいハッシュタグ
-4. 地域性を活かしたハッシュタグ
-5. 季節感や旬を表現するハッシュタグ
-6. 価格帯やターゲット層に適したハッシュタグ
-7. トレンドや流行を意識したハッシュタグ
-8. 具体的で検索しやすいハッシュタグ
-9. 感情や雰囲気を表現するハッシュタグ
-10. 店舗の特徴を活かしたハッシュタグ
+【構成要件】
+- 日本語ハッシュタグ：5つ（料理名、食材、調理法、雰囲気など）
+- 英語ハッシュタグ：5つ（グローバル対応、人気タグ）
+- 合計10個のハッシュタグを生成
 
-ハッシュタグは15-20個生成し、各ハッシュタグは改行で区切ってください。人気度の高いものから順に並べてください。`
+【内容要件】
+1. 写真に写っている料理・食材を具体的に反映
+2. 店舗の特徴や雰囲気を活かしたハッシュタグ
+3. 人気で検索されやすいハッシュタグ
+4. 季節感や旬を表現するハッシュタグ
+5. Instagram で人気のフードタグ
+
+【出力形式】
+日本語ハッシュタグ（5つ）
+英語ハッシュタグ（5つ）
+の順番で、各ハッシュタグは改行で区切ってください。`
           },
           {
             role: "user",
@@ -262,7 +268,8 @@ ${captionPrompt}
 - 店舗の特徴: ${session.store_description || '未設定'}
 - 固定ハッシュタグ: ${session.fixed_hashtags || 'なし'}
 
-この料理写真と店舗情報に最適な、人気で効果的なハッシュタグを15-20個生成してください。各ハッシュタグは改行で区切ってください。`
+この料理写真に写っている内容を具体的に反映し、店舗情報を活かした効果的なハッシュタグを生成してください。
+日本語5つ、英語5つの順番で、各ハッシュタグは改行で区切ってください。`
           }
         ],
         max_tokens: hashtagMaxTokens,
@@ -346,16 +353,26 @@ ${captionPrompt}
       caption = `${caption}\n\n${session.fixed_caption}`
     }
 
-    // 固定ハッシュタグの追加
-    if (session.fixed_hashtags) {
-      hashtags = `${hashtags}\n${session.fixed_hashtags}`
-    }
-
-    // ハッシュタグを配列に変換
-    const hashtagArray = hashtags
+    // ハッシュタグを配列に変換して重複排除
+    const generatedHashtags = hashtags
       .split('\n')
       .map(tag => tag.trim())
       .filter(tag => tag.startsWith('#') && tag.length > 1)
+
+    // 固定ハッシュタグを追加（重複排除）
+    const fixedHashtags = session.fixed_hashtags 
+      ? session.fixed_hashtags.split(/[\s\n]+/).map(tag => tag.trim()).filter(tag => tag.startsWith('#') && tag.length > 1)
+      : []
+
+    // 重複排除して結合
+    const allHashtags = [...generatedHashtags]
+    fixedHashtags.forEach(tag => {
+      if (!allHashtags.includes(tag)) {
+        allHashtags.push(tag)
+      }
+    })
+
+    const hashtagArray = allHashtags
 
     // 画像エフェクトの適用（AIによる最適化）
     let imageEffects = generateImageEffects(effectStrength)

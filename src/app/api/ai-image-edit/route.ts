@@ -285,9 +285,25 @@ async function generateCaptionAndHashtags(openai: OpenAI, image: string, analysi
       ? `${result.caption}\n\n${storeInfo.fixed_caption}`
       : result.caption
     
-    const finalHashtags = storeInfo?.fixed_hashtags
-      ? `${result.hashtags} ${storeInfo.fixed_hashtags}`
-      : result.hashtags
+    // ハッシュタグの重複排除処理
+    const generatedHashtags = result.hashtags
+      .split(/[\s\n]+/)
+      .map((tag: string) => tag.trim())
+      .filter((tag: string) => tag.startsWith('#') && tag.length > 1)
+    
+    const fixedHashtags = storeInfo?.fixed_hashtags
+      ? storeInfo.fixed_hashtags.split(/[\s\n]+/).map((tag: string) => tag.trim()).filter((tag: string) => tag.startsWith('#') && tag.length > 1)
+      : []
+    
+    // 重複排除して結合
+    const allHashtags = [...generatedHashtags]
+    fixedHashtags.forEach((tag: string) => {
+      if (!allHashtags.includes(tag)) {
+        allHashtags.push(tag)
+      }
+    })
+    
+    const finalHashtags = allHashtags.join(' ')
 
     return {
       caption: finalCaption,
@@ -296,9 +312,12 @@ async function generateCaptionAndHashtags(openai: OpenAI, image: string, analysi
   } catch (error) {
     console.error('キャプション生成エラー:', error)
     // フォールバック
+    const fallbackHashtags = `#${analysis.foodType} #美味しい #グルメ #料理 #食べ物 #instafood #delicious #foodie #restaurant #yummy`
+    const fixedHashtags = storeInfo?.fixed_hashtags || ''
+    
     return {
       caption: `美味しい${analysis.foodType}をご用意しました！✨ 心を込めて作った一品です。ぜひお楽しみください😊`,
-      hashtags: `#${analysis.foodType} #美味しい #グルメ #料理 #食べ物 #instafood #delicious #foodie #restaurant #yummy ${storeInfo?.fixed_hashtags || ''}`
+      hashtags: `${fallbackHashtags} ${fixedHashtags}`.trim()
     }
   }
 }
@@ -336,10 +355,9 @@ async function generateContentAndAdvice(openai: OpenAI, image: string, analysis:
 - Instagram映えする絵文字を適度に使用
 
 ■ ハッシュタグ：
-- 料理名・食材・調理法関連
-- 店舗・地域関連
-- Instagram人気タグ
-- 固定ハッシュタグを必ず含める
+- 日本語ハッシュタグ：5つ（写真に写っている料理・食材・調理法・見た目を具体的に反映）
+- 英語ハッシュタグ：5つ（グローバル対応、Instagram人気タグ）
+- 合計10個のハッシュタグを生成（固定ハッシュタグは後で追加）
 
 ■ 撮影アドバイス：
 - 分析結果に基づく具体的な改善点
@@ -381,9 +399,25 @@ async function generateContentAndAdvice(openai: OpenAI, image: string, analysis:
       ? `${result.caption}\n\n${storeInfo.fixed_caption}`
       : result.caption
     
-    const finalHashtags = storeInfo?.fixed_hashtags
-      ? `${result.hashtags} ${storeInfo.fixed_hashtags}`
-      : result.hashtags
+    // ハッシュタグの重複排除処理
+    const generatedHashtags = result.hashtags
+      .split(/[\s\n]+/)
+      .map((tag: string) => tag.trim())
+      .filter((tag: string) => tag.startsWith('#') && tag.length > 1)
+    
+    const fixedHashtags = storeInfo?.fixed_hashtags
+      ? storeInfo.fixed_hashtags.split(/[\s\n]+/).map((tag: string) => tag.trim()).filter((tag: string) => tag.startsWith('#') && tag.length > 1)
+      : []
+    
+    // 重複排除して結合
+    const allHashtags = [...generatedHashtags]
+    fixedHashtags.forEach((tag: string) => {
+      if (!allHashtags.includes(tag)) {
+        allHashtags.push(tag)
+      }
+    })
+    
+    const finalHashtags = allHashtags.join(' ')
 
     return {
       caption: finalCaption,
@@ -393,9 +427,12 @@ async function generateContentAndAdvice(openai: OpenAI, image: string, analysis:
   } catch (error) {
     console.error('統合コンテンツ生成エラー:', error)
     // フォールバック
+    const fallbackHashtags = `#${analysis.foodType} #美味しい #グルメ #料理 #食べ物 #instafood #delicious #foodie #restaurant #yummy`
+    const fixedHashtags = storeInfo?.fixed_hashtags || ''
+    
     return {
       caption: `美味しい${analysis.foodType}をご用意しました！✨ 心を込めて作った一品です。ぜひお楽しみください😊`,
-      hashtags: `#${analysis.foodType} #美味しい #グルメ #料理 #食べ物 #instafood #delicious #foodie #restaurant #yummy ${storeInfo?.fixed_hashtags || ''}`,
+      hashtags: `${fallbackHashtags} ${fixedHashtags}`.trim(),
       photographyAdvice: '自然光での撮影、背景をシンプルに、料理を中心に配置することをお勧めします。'
     }
   }
