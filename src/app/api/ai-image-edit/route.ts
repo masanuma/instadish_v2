@@ -350,9 +350,10 @@ async function generateContentAndAdvice(openai: OpenAI, image: string, analysis:
 
 要件：
 ■ キャプション：
-- 料理の美味しさが伝わる表現
-- 店舗の特徴を活かした内容
-- Instagram映えする絵文字を適度に使用
+- 【必須】画像分析結果の具体的な内容を反映（料理名・食材・見た目・特徴）
+- 【必須】店舗情報を活かした個性的な表現
+- 【表現】五感に訴える感覚的な描写（香り、食感、温度感など）
+- 【形式】Instagram映えする絵文字を適度に使用、100-150文字程度
 
 ■ ハッシュタグ：
 - 日本語ハッシュタグ：5つ（写真に写っている料理・食材・調理法・見た目を具体的に反映）
@@ -471,34 +472,33 @@ async function generatePhotographyAdvice(openai: OpenAI, analysis: ImageAnalysis
 // Instagram向け画像分析
 async function analyzeImageForInstagram(openai: OpenAI, image: string): Promise<ImageAnalysisResult> {
   const analysisPrompt = `
-この料理写真をInstagramで高く評価されるための分析を行ってください。
-以下の観点から詳細に分析し、JSON形式で回答してください：
+この料理写真を詳細に分析し、Instagram用キャプション・ハッシュタグ生成に必要な情報を収集してください。
 
-1. 料理の種類（foodType）
-2. 構図の問題点（compositionIssues）
-3. 照明の問題点（lightingIssues）
-4. 色彩の問題点（colorIssues）
-5. 背景の問題点（backgroundIssues）
-6. 推奨される最適化（recommendedOptimizations）
+【分析要件】
+1. 料理の正確な名前・種類（具体的に）
+2. 写真で確認できる食材・調理法・見た目の特徴
+3. 色彩・視覚的魅力・盛り付けの詳細
+4. Instagram最適化のための問題点と改善案
 
-回答は以下のJSON形式で：
+【JSON出力形式】
 {
-  "foodType": "料理の種類",
-  "compositionIssues": ["構図の問題1", "構図の問題2"],
-  "lightingIssues": ["照明の問題1", "照明の問題2"],
-  "colorIssues": ["色彩の問題1", "色彩の問題2"],
-  "backgroundIssues": ["背景の問題1", "背景の問題2"],
-  "recommendedOptimizations": ["最適化1", "最適化2", "最適化3"]
+  "foodType": "具体的な料理名（例：ハンバーグステーキ、カルボナーラ等）",
+  "compositionIssues": ["構図の問題点を具体的に"],
+  "lightingIssues": ["照明の問題点を具体的に"], 
+  "colorIssues": ["色彩の問題点を具体的に"],
+  "backgroundIssues": ["背景の問題点を具体的に"],
+  "recommendedOptimizations": ["照明最適化", "色彩強調", "背景ぼかし", "構図調整", "テクスチャ強調"]
 }
 
-Instagram映えする料理写真の特徴：
-- 自然光または暖かい照明
-- 背景がすっきりしている
-- 料理が中心に配置されている
-- 色彩が鮮やか
-- 構図にバランスがある
-- テクスチャが美しく見える
-`
+【重要】foodTypeは「料理」「パスタ」等の一般的な表現ではなく、写真から判断できる具体的な料理名を記載してください。
+食材、調理状態、見た目の特徴も詳細に含めて分析してください。
+
+Instagram映えする料理写真の基準：
+- 自然光または暖かい照明で美味しそうに見える
+- 背景がすっきりして料理が映える
+- 料理が中心に配置され構図が整っている
+- 色彩が鮮やかで食欲をそそる
+- 食材のテクスチャや質感が美しく表現されている`
 
   try {
     const response = await openai.chat.completions.create({
