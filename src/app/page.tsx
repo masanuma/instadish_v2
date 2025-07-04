@@ -568,7 +568,9 @@ export default function Home() {
                         <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                           <h4 className="font-medium text-green-900 mb-2">#️⃣ ハッシュタグ</h4>
                           <div className="bg-white p-3 rounded border text-green-700 text-sm">
-                            {optimizationResult.hashtags}
+                            {optimizationResult.hashtags.split(' ').filter((tag: string) => tag.trim() !== '').map((tag: string, index: number) => (
+                              <div key={index} className="mb-1">{tag}</div>
+                            ))}
                           </div>
                           <button
                             onClick={() => {
@@ -582,13 +584,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* 撮影アドバイス */}
-                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                        <h4 className="font-medium text-orange-900 mb-2">💡 撮影アドバイス</h4>
-                        <div className="bg-white p-3 rounded border text-orange-700 text-sm whitespace-pre-line">
-                          {optimizationResult.photographyAdvice}
-                        </div>
-                      </div>
+
 
                       {/* Instagram効果説明 */}
                       <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">

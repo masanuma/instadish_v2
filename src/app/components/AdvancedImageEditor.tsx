@@ -165,7 +165,9 @@ export default function InstagramOptimizer({ image, onOptimized, onCancel }: Ins
                     <div>
                       <p className="font-medium text-green-800">#️⃣ ハッシュタグ:</p>
                       <div className="bg-white p-3 rounded border text-green-700 text-sm">
-                        {result.hashtags}
+                        {result.hashtags.split(' ').filter((tag: string) => tag.trim() !== '').map((tag: string, index: number) => (
+                          <div key={index} className="mb-1">{tag}</div>
+                        ))}
                       </div>
                     </div>
                   </div>
