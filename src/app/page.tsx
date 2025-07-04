@@ -547,26 +547,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* キャプション・ハッシュタグ */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                          <h4 className="font-medium text-blue-900 mb-2">✍️ 生成されたキャプション</h4>
-                          <div className="bg-white p-3 rounded border text-blue-700 text-sm whitespace-pre-line">
-                            {optimizationResult.caption}
-                          </div>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(optimizationResult.caption)
-                              alert('キャプションをコピーしました！')
-                            }}
-                            className="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
-                          >
-                            📋 コピー
-                          </button>
-                        </div>
-                        
 
-                      </div>
 
 
 
