@@ -565,23 +565,7 @@ export default function Home() {
                           </button>
                         </div>
                         
-                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                          <h4 className="font-medium text-green-900 mb-2">#️⃣ ハッシュタグ</h4>
-                          <div className="bg-white p-3 rounded border text-green-700 text-sm">
-                            {optimizationResult.hashtags.split(' ').filter((tag: string) => tag.trim() !== '').map((tag: string, index: number) => (
-                              <div key={index} className="mb-1">{tag}</div>
-                            ))}
-                          </div>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(optimizationResult.hashtags)
-                              alert('ハッシュタグをコピーしました！')
-                            }}
-                            className="mt-2 text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
-                          >
-                            📋 コピー
-                          </button>
-                        </div>
+
                       </div>
 
 
@@ -772,8 +756,8 @@ export default function Home() {
 
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                     <textarea
-                      value={hashtags}
-                      onChange={(e) => setHashtags(e.target.value)}
+                      value={hashtags.split(' ').filter((tag: string) => tag.trim() !== '').join('\n')}
+                      onChange={(e) => setHashtags(e.target.value.split('\n').join(' '))}
                       className="w-full h-36 sm:h-48 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-xs sm:text-sm"
                       placeholder="ハッシュタグを編集できます..."
                     />
