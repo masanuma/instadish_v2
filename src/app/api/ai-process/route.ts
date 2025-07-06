@@ -8,6 +8,7 @@ import {
   validateAIResponse
 } from '@/lib/ai-utils'
 import OpenAI from 'openai'
+import sharp from 'sharp'
 
 // ビルド時の事前レンダリングを無効にする
 export const dynamic = 'force-dynamic'
@@ -54,6 +55,89 @@ function generateImageEffects(effectStrength: string) {
       return {
         filter: 'brightness(1.15) contrast(1.12) saturate(1.25) hue-rotate(5deg)',
         description: '標準調整を適用'
+      }
+  }
+}
+
+// Sharp.jsを使用した実際の画像処理
+async function processImageWithSharp(imageBase64: string, effectStrength: string): Promise<string> {
+  try {
+    // base64画像をBufferに変換
+    const base64Data = imageBase64.split(',')[1]
+    const imageBuffer = Buffer.from(base64Data, 'base64')
+    
+    // エフェクト強度に応じた処理パラメータ
+    const params = getProcessingParams(effectStrength)
+    
+    // Sharp.jsで画像処理
+    const processedBuffer = await sharp(imageBuffer)
+      .modulate({
+        brightness: params.brightness,
+        saturation: params.saturation,
+        hue: params.hue
+      })
+      .gamma(params.gamma)
+      .jpeg({
+        quality: 85,
+        progressive: true,
+        mozjpeg: true
+      })
+      .toBuffer()
+    
+    // base64に変換して返す
+    const processedBase64 = `data:image/jpeg;base64,${processedBuffer.toString('base64')}`
+    return processedBase64
+  } catch (error) {
+    console.error('画像処理エラー:', error)
+    // エラーの場合は元画像を返す
+    return imageBase64
+  }
+}
+
+// エフェクト強度に応じた処理パラメータを取得
+function getProcessingParams(effectStrength: string) {
+  switch (effectStrength) {
+    case 'very-weak':
+      return {
+        brightness: 1.03,
+        saturation: 1.05,
+        hue: 5,
+        gamma: 1.0
+      }
+    case 'weak':
+      return {
+        brightness: 1.08,
+        saturation: 1.12,
+        hue: 10,
+        gamma: 1.05
+      }
+    case 'normal':
+      return {
+        brightness: 1.15,
+        saturation: 1.25,
+        hue: 15,
+        gamma: 1.1
+      }
+    case 'strong':
+      return {
+        brightness: 1.25,
+        saturation: 1.35,
+        hue: 25,
+        gamma: 1.15
+      }
+    case 'very-strong':
+      return {
+        brightness: 1.35,
+        saturation: 1.45,
+        hue: 35,
+        gamma: 1.2
+      }
+    default:
+      return {
+        brightness: 1.15,
+        saturation: 1.25,
+        hue: 15,
+        gamma: 1.1
       }
   }
 }
@@ -406,9 +490,8 @@ ${captionPrompt}
     // 画像エフェクトの適用（AIによる最適化）
     let imageEffects = generateImageEffects(effectStrength)
     
-    // AI提案に基づいてエフェクトを調整（必要に応じて）
-    // 現在は基本的なエフェクトを使用し、AI提案は参考情報として提供
-    const processedImage = image // 実際の画像処理はフロントエンドでCSSフィルターを使用
+    // 実際の画像処理をSharp.jsで実行
+    const processedImage = await processImageWithSharp(image, effectStrength)
 
     // 結果をキャッシュに保存
     if (!regenerateCaption && !regenerateHashtags) {

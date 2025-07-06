@@ -98,6 +98,12 @@ export default function Home() {
   const handleInstagramOptimization = async () => {
     if (!selectedImage) return
 
+    // 処理中の重複実行を防ぐ
+    if (isInstagramOptimizing) {
+      console.log('Instagram最適化処理中のため、リクエストをスキップします')
+      return
+    }
+
     setIsInstagramOptimizing(true)
     setProcessedImage(null)
     setOptimizationResult(null)
@@ -120,6 +126,15 @@ export default function Home() {
       })
 
       if (!response.ok) {
+        // 認証エラー（401）の場合は適切な処理を行う
+        if (response.status === 401) {
+          const confirmLogin = window.confirm('ログインが必要です。ログイン画面に移動しますか？')
+          if (confirmLogin) {
+            window.location.href = '/login'
+          }
+          return
+        }
+        
         const errorData = await response.json()
         throw new Error(errorData.error || 'Instagram最適化に失敗しました')
       }
@@ -146,6 +161,12 @@ export default function Home() {
 
   const processWithAI = async () => {
     if (!selectedImage) return
+
+    // 処理中の重複実行を防ぐ
+    if (isProcessing) {
+      console.log('処理中のため、リクエストをスキップします')
+      return
+    }
 
     setIsProcessing(true)
     setProcessingTime(0)
@@ -193,7 +214,16 @@ export default function Home() {
           setDownloadUrl(result.processedImage)
         }
       } else {
-        // APIからの詳細エラー情報を取得して表示
+        // 認証エラー（401）の場合は適切な処理を行う
+        if (response.status === 401) {
+          const confirmLogin = window.confirm('ログインが必要です。ログイン画面に移動しますか？')
+          if (confirmLogin) {
+            window.location.href = '/login'
+          }
+          return
+        }
+        
+        // その他のエラーの場合は詳細情報を表示
         try {
           const errorData = await response.json()
           const errorMessage = errorData.error || 'AI処理でエラーが発生しました'
@@ -269,6 +299,15 @@ export default function Home() {
         setShowCaptionPrompt(false)
         setCaptionPrompt('')
       } else {
+        // 認証エラー（401）の場合は適切な処理を行う
+        if (response.status === 401) {
+          const confirmLogin = window.confirm('ログインが必要です。ログイン画面に移動しますか？')
+          if (confirmLogin) {
+            window.location.href = '/login'
+          }
+          return
+        }
+        
         try {
           const errorData = await response.json()
           const errorMessage = errorData.error || 'キャプション再生成でエラーが発生しました'
@@ -324,6 +363,15 @@ export default function Home() {
         setShowHashtagPrompt(false)
         setHashtagPrompt('')
       } else {
+        // 認証エラー（401）の場合は適切な処理を行う
+        if (response.status === 401) {
+          const confirmLogin = window.confirm('ログインが必要です。ログイン画面に移動しますか？')
+          if (confirmLogin) {
+            window.location.href = '/login'
+          }
+          return
+        }
+        
         try {
           const errorData = await response.json()
           const errorMessage = errorData.error || 'ハッシュタグ再生成でエラーが発生しました'
