@@ -62,15 +62,43 @@ function generateImageEffects(effectStrength: string) {
 // Sharp.jsを使用した実際の画像処理
 async function processImageWithSharp(imageBase64: string, effectStrength: string): Promise<string> {
   try {
+    console.log('Sharp.js処理開始:', { effectStrength, imageSize: imageBase64.length })
+    
     // base64画像をBufferに変換
+    if (!imageBase64.includes(',')) {
+      throw new Error('Invalid base64 image format')
+    }
+    
     const base64Data = imageBase64.split(',')[1]
+    if (!base64Data) {
+      throw new Error('No base64 data found')
+    }
+    
     const imageBuffer = Buffer.from(base64Data, 'base64')
+    console.log('Image buffer created:', { size: imageBuffer.length })
     
     // エフェクト強度に応じた処理パラメータ
     const params = getProcessingParams(effectStrength)
+    console.log('Processing params:', params)
     
     // Sharp.jsで画像処理
-    const processedBuffer = await sharp(imageBuffer)
+    const sharpImage = sharp(imageBuffer)
+    
+    // 画像サイズを制限（メモリ使用量削減）
+    const metadata = await sharpImage.metadata()
+    console.log('Image metadata:', metadata)
+    
+    // 大きすぎる画像はリサイズ
+    let processedSharp = sharpImage
+    if (metadata.width && metadata.width > 2048) {
+      processedSharp = processedSharp.resize(2048, null, { 
+        withoutEnlargement: true,
+        fastShrinkOnLoad: true
+      })
+      console.log('Image resized to max width 2048px')
+    }
+    
+    const processedBuffer = await processedSharp
       .modulate({
         brightness: params.brightness,
         saturation: params.saturation,
@@ -84,11 +112,18 @@ async function processImageWithSharp(imageBase64: string, effectStrength: string
       })
       .toBuffer()
     
+    console.log('Sharp.js処理完了:', { outputSize: processedBuffer.length })
+    
     // base64に変換して返す
     const processedBase64 = `data:image/jpeg;base64,${processedBuffer.toString('base64')}`
     return processedBase64
   } catch (error) {
-    console.error('画像処理エラー:', error)
+    console.error('Sharp.js画像処理エラー:', error)
+    console.error('エラー詳細:', {
+      name: error instanceof Error ? error.name : 'unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'no stack'
+    })
     // エラーの場合は元画像を返す
     return imageBase64
   }
@@ -491,7 +526,14 @@ ${captionPrompt}
     let imageEffects = generateImageEffects(effectStrength)
     
     // 実際の画像処理をSharp.jsで実行
-    const processedImage = await processImageWithSharp(image, effectStrength)
+    let processedImage: string
+    try {
+      processedImage = await processImageWithSharp(image, effectStrength)
+    } catch (error) {
+      console.error('Sharp.js処理失敗、代替処理に切り替え:', error)
+      // Sharp.jsが失敗した場合は元画像を返す
+      processedImage = image
+    }
 
     // 結果をキャッシュに保存
     if (!regenerateCaption && !regenerateHashtags) {
