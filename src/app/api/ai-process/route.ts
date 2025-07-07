@@ -59,8 +59,10 @@ function generateImageEffects(effectStrength: string) {
   }
 }
 
-// Sharp.jsを使用した実際の画像処理
+// Sharp.jsを使用した実際の画像処理（最適化版）
 async function processImageWithSharp(imageBase64: string, effectStrength: string): Promise<string> {
+  const startTime = Date.now()
+  
   try {
     console.log('Sharp.js処理開始:', { effectStrength, imageSize: imageBase64.length })
     
@@ -81,48 +83,98 @@ async function processImageWithSharp(imageBase64: string, effectStrength: string
     const params = getProcessingParams(effectStrength)
     console.log('Processing params:', params)
     
-    // Sharp.jsで画像処理
-    const sharpImage = sharp(imageBuffer)
+    // Sharp.jsで画像処理（最適化設定）
+    const sharpImage = sharp(imageBuffer, {
+      // パフォーマンス最適化設定
+      failOnError: false,
+      density: 200,
+      limitInputPixels: 268402689, // 16384x16384 max
+      sequentialRead: true
+    })
     
     // 画像サイズを制限（メモリ使用量削減）
     const metadata = await sharpImage.metadata()
-    console.log('Image metadata:', metadata)
+    console.log('Image metadata:', { 
+      width: metadata.width, 
+      height: metadata.height, 
+      format: metadata.format,
+      channels: metadata.channels,
+      size: metadata.size
+    })
     
-    // 大きすぎる画像はリサイズ
+    // 大きすぎる画像はリサイズ（より積極的に最適化）
     let processedSharp = sharpImage
-    if (metadata.width && metadata.width > 2048) {
-      processedSharp = processedSharp.resize(2048, null, { 
+    const maxWidth = 1920  // 2048 -> 1920に削減
+    const maxHeight = 1080 // 高さ制限も追加
+    
+    if ((metadata.width && metadata.width > maxWidth) || 
+        (metadata.height && metadata.height > maxHeight)) {
+      processedSharp = processedSharp.resize(maxWidth, maxHeight, { 
+        fit: 'inside',
         withoutEnlargement: true,
         fastShrinkOnLoad: true
       })
-      console.log('Image resized to max width 2048px')
+      console.log(`Image resized to fit ${maxWidth}x${maxHeight}`)
     }
     
-    const processedBuffer = await processedSharp
-      .modulate({
-        brightness: params.brightness,
-        saturation: params.saturation,
-        hue: params.hue
-      })
-      .gamma(params.gamma)
-      .jpeg({
-        quality: 85,
-        progressive: true,
-        mozjpeg: true
-      })
-      .toBuffer()
+          // 高品質な画像処理パイプライン
+      let finalSharp = processedSharp
+        .modulate({
+          brightness: params.brightness,
+          saturation: params.saturation,
+          hue: params.hue
+        })
+        .gamma(params.gamma)
+        // 軽微なシャープネス強化（品質向上）
+        .sharpen({ 
+          sigma: 0.5, 
+          m1: 0.8, 
+          m2: 0.2 
+        })
+      
+      // WebP対応判定（ファイルサイズと品質のバランス）
+      const supportsWebP = metadata.format !== 'gif' // GIF以外はWebP対応
+      
+      let processedBuffer: Buffer
+      if (supportsWebP && imageBuffer.length > 500000) { // 500KB以上の場合WebP使用
+        processedBuffer = await finalSharp
+          .webp({
+            quality: 90,           // WebPは高品質
+            effort: 4,             // 圧縮効率とスピードのバランス
+            smartSubsample: true   // 高品質サブサンプリング
+          })
+          .toBuffer()
+        console.log('WebP形式で高品質圧縮を適用')
+      } else {
+        processedBuffer = await finalSharp
+          .jpeg({
+            quality: 88,           // JPEG高品質
+            progressive: true,
+            mozjpeg: true,
+            chromaSubsampling: '4:4:4' // 色品質向上
+          })
+          .toBuffer()
+        console.log('JPEG形式で高品質出力')
+      }
     
-    console.log('Sharp.js処理完了:', { outputSize: processedBuffer.length })
+    const processingTime = Date.now() - startTime
+    console.log('Sharp.js処理完了:', { 
+      outputSize: processedBuffer.length,
+      processingTime: processingTime + 'ms',
+      compressionRatio: Math.round((1 - processedBuffer.length / imageBuffer.length) * 100) + '%'
+    })
     
-    // base64に変換して返す
-    const processedBase64 = `data:image/jpeg;base64,${processedBuffer.toString('base64')}`
+    // base64に変換して返す（適切なMIMEタイプ設定）
+    const mimeType = supportsWebP && imageBuffer.length > 500000 ? 'image/webp' : 'image/jpeg'
+    const processedBase64 = `data:${mimeType};base64,${processedBuffer.toString('base64')}`
     return processedBase64
   } catch (error) {
     console.error('Sharp.js画像処理エラー:', error)
     console.error('エラー詳細:', {
       name: error instanceof Error ? error.name : 'unknown',
       message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : 'no stack'
+      stack: error instanceof Error ? error.stack : 'no stack',
+      processingTime: Date.now() - startTime + 'ms'
     })
     // エラーの場合は元画像を返す
     return imageBase64
@@ -551,19 +603,16 @@ ${captionPrompt}
     // 画像エフェクトの適用（AIによる最適化）
     let imageEffects = generateImageEffects(effectStrength)
     
-    // 実際の画像処理をSharp.jsで実行（一時的に無効化）
+    // 実際の画像処理をSharp.jsで実行（最適化版）
     let processedImage: string
-    console.log('Sharp.js処理をスキップ（一時的な修正）')
-    // 一時的にSharp.js処理を無効化して元画像を返す
-    processedImage = image
-    
-    // TODO: Sharp.js処理の問題解決後に有効化
-    // try {
-    //   processedImage = await processImageWithSharp(image, effectStrength)
-    // } catch (error) {
-    //   console.error('Sharp.js処理失敗、代替処理に切り替え:', error)
-    //   processedImage = image
-    // }
+    console.log('Sharp.js処理を開始（最適化版）')
+    try {
+      processedImage = await processImageWithSharp(image, effectStrength)
+      console.log('Sharp.js処理成功 - 高品質な画像処理完了')
+    } catch (error) {
+      console.error('Sharp.js処理失敗、代替処理に切り替え:', error)
+      processedImage = image
+    }
 
     // 結果をキャッシュに保存
     if (!regenerateCaption && !regenerateHashtags) {
