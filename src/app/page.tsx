@@ -121,7 +121,8 @@ export default function Home() {
         },
         body: JSON.stringify({
           image: selectedImage,
-          mode: 'auto'
+          mode: 'auto',
+          effectStrength: effectStrength
         })
       })
 
@@ -142,7 +143,10 @@ export default function Home() {
       const data = await response.json()
       
       if (data.success && data.result) {
-        setProcessedImage(data.result.optimizedImage)
+        // SNS最適化の場合も元画像にエフェクトを適用
+        const processedImageWithFilter = await applyImageEffects(selectedImage, data.result.imageEffects)
+        
+        setProcessedImage(processedImageWithFilter)
         setOptimizationResult(data.result)
         setCaption(data.result.caption)
         setHashtags(data.result.hashtags)
@@ -207,7 +211,10 @@ export default function Home() {
           console.error('JSONパースエラー:', parseError)
           throw new Error(`レスポンスのJSONパースに失敗: ${responseText.substring(0, 200)}...`)
         }
-        setProcessedImage(result.processedImage)
+        // 元画像にCSS filterを適用して処理済み画像を生成
+        const processedImageWithFilter = await applyImageEffects(selectedImage, result.imageEffects)
+        
+        setProcessedImage(processedImageWithFilter)
         setCaption(result.caption)
         setHashtags(result.hashtags.join('\n'))
         setImageAnalysis(result.analysis || '')
@@ -417,6 +424,38 @@ export default function Home() {
   const cancelHashtagRegenerate = () => {
     setShowHashtagPrompt(false)
     setHashtagPrompt('')
+  }
+
+  // CSS filterを実際の画像に適用
+  const applyImageEffects = (imageSrc: string, imageEffectsObj: any): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const img = new Image()
+      
+      img.onload = () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        
+        // エフェクトを適用
+        if (ctx && imageEffectsObj?.filter) {
+          ctx.filter = imageEffectsObj.filter
+          ctx.drawImage(img, 0, 0)
+          resolve(canvas.toDataURL('image/jpeg', 0.9))
+        } else {
+          // エフェクトがない場合は元画像を返す
+          resolve(imageSrc)
+        }
+      }
+      
+      img.onerror = () => {
+        console.error('画像読み込みエラー')
+        resolve(imageSrc) // エラー時は元画像を返す
+      }
+      
+      img.crossOrigin = 'anonymous'
+      img.src = imageSrc
+    })
   }
 
   // 画像ダウンロード用のCanvas処理

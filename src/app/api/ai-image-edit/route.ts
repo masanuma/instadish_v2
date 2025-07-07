@@ -9,6 +9,42 @@ import sharp from 'sharp'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+// CSS フィルターを使用した画像処理のエフェクト生成（5段階に拡張）
+function generateImageEffects(effectStrength: string) {
+  switch (effectStrength) {
+    case 'very-weak':
+      return {
+        filter: 'brightness(1.03) contrast(1.02) saturate(1.05) hue-rotate(1deg)',
+        description: '最小調整: 明度+3%, 彩度+5%, コントラスト+2% - ほぼ自然な上品仕上がり'
+      }
+    case 'weak':
+      return {
+        filter: 'brightness(1.08) contrast(1.05) saturate(1.12) hue-rotate(3deg)',
+        description: '軽微な調整: 明度+8%, 彩度+12%, コントラスト+5% - 自然な美味しさを保持'
+      }
+    case 'normal':
+      return {
+        filter: 'brightness(1.15) contrast(1.12) saturate(1.25) hue-rotate(5deg)',
+        description: '標準調整: 明度+15%, 彩度+25%, コントラスト+12% - バランスの良い食欲増進効果'
+      }
+    case 'strong':
+      return {
+        filter: 'brightness(1.25) contrast(1.18) saturate(1.35) hue-rotate(8deg) sepia(0.08)',
+        description: '強力調整: 明度+25%, 彩度+35%, コントラスト+18%, 暖色調整 - インパクトのある美味しさ強調'
+      }
+    case 'very-strong':
+      return {
+        filter: 'brightness(1.35) contrast(1.25) saturate(1.45) hue-rotate(12deg) sepia(0.15)',
+        description: '最強調整: 明度+35%, 彩度+45%, コントラスト+25%, 暖色強調 - 極限まで魅力を引き出す'
+      }
+    default:
+      return {
+        filter: 'brightness(1.15) contrast(1.12) saturate(1.25) hue-rotate(5deg)',
+        description: '標準調整を適用'
+      }
+  }
+}
+
 // 最適化強度の設定（エフェクト強度対応）
 function getOptimizationStrength(type: 'brightness' | 'contrast' | 'saturation' | 'gamma' | 'sharpen', optimizations: string[], effectStrength?: string): number {
   const baseValues = {
@@ -77,6 +113,7 @@ interface OptimizationResult {
   caption: string
   hashtags: string
   photographyAdvice: string
+  imageEffects?: any
 }
 
 export async function POST(request: NextRequest) {
@@ -93,7 +130,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
 
-    const { image, mode = 'auto' } = await request.json()
+    const { image, mode = 'auto', effectStrength = 'normal' } = await request.json()
     const openai = createOptimizedOpenAIClient()
     
     if (!image) {
@@ -110,7 +147,7 @@ export async function POST(request: NextRequest) {
     
     if (mode === 'auto') {
       // 自動最適化モード（画像最適化＋キャプション生成）
-      result = await performCompleteOptimization(openai, image, session.id)
+      result = await performCompleteOptimization(openai, image, session.id, effectStrength)
     } else {
       // 手動編集モード（既存機能）
       const { editType, options } = await request.json()
@@ -140,7 +177,7 @@ export async function POST(request: NextRequest) {
 }
 
 // 完全最適化処理（画像最適化＋キャプション生成）- 最適化版
-async function performCompleteOptimization(openai: OpenAI, image: string, storeId: string): Promise<OptimizationResult> {
+async function performCompleteOptimization(openai: OpenAI, image: string, storeId: string, effectStrength: string = 'normal'): Promise<OptimizationResult> {
   const startTime = Date.now()
   
   // Step 1: 画像分析と店舗情報取得を並列実行
@@ -159,6 +196,9 @@ async function performCompleteOptimization(openai: OpenAI, image: string, storeI
   
   console.log(`最適化・コンテンツ生成完了: ${Date.now() - startTime}ms`)
   
+  // エフェクト強度に応じた画像エフェクト生成
+  const imageEffects = generateImageEffects(effectStrength)
+  
   return {
     appliedOptimizations: analysis.recommendedOptimizations,
     processingTime: Date.now() - startTime,
@@ -166,7 +206,8 @@ async function performCompleteOptimization(openai: OpenAI, image: string, storeI
     optimizedImage,
     caption: contentAndAdvice.caption,
     hashtags: contentAndAdvice.hashtags,
-    photographyAdvice: contentAndAdvice.photographyAdvice
+    photographyAdvice: contentAndAdvice.photographyAdvice,
+    imageEffects
   }
 }
 
