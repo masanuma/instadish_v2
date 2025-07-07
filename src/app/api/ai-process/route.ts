@@ -184,25 +184,48 @@ function createOpenAIClient() {
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
+  console.log('=== AI処理API開始 ===', { timestamp: new Date().toISOString() })
   
   try {
+    console.log('1. 認証チェック開始')
     // 認証チェック
     const token = request.headers.get('authorization')?.replace('Bearer ', '') || request.cookies.get('auth_token')?.value
+    console.log('トークン確認:', { hasToken: !!token, tokenLength: token?.length })
+    
     if (!token) {
+      console.log('認証エラー: トークンなし')
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
+    
     const session = await validateSession(token)
+    console.log('セッション検証結果:', { hasSession: !!session, sessionName: session?.name })
+    
     if (!session) {
+      console.log('認証エラー: セッション無効')
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
 
-    const { image, effectStrength, regenerateCaption, regenerateHashtags, customPrompt, fastMode } = await request.json()
+    console.log('2. リクエストボディ解析開始')
+    const requestBody = await request.json()
+    console.log('リクエストボディ:', {
+      hasImage: !!requestBody.image,
+      imageSize: requestBody.image?.length || 0,
+      effectStrength: requestBody.effectStrength,
+      regenerateCaption: requestBody.regenerateCaption,
+      regenerateHashtags: requestBody.regenerateHashtags,
+      fastMode: requestBody.fastMode
+    })
+    
+    const { image, effectStrength, regenerateCaption, regenerateHashtags, customPrompt, fastMode } = requestBody
+    
+    console.log('3. OpenAIクライアント作成')
     const openai = createOpenAIClient()
     
     if (!image || !effectStrength) {
       const missingParams = []
       if (!image) missingParams.push('image')
       if (!effectStrength) missingParams.push('effectStrength')
+      console.log('パラメータエラー:', { missingParams })
       return NextResponse.json(
         { 
           error: '必要なパラメータが不足しています',
@@ -231,9 +254,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log('4. 画像解析・AI処理開始')
     // 再生成の場合は画像解析をスキップ
     let imageAnalysis = ''
     if (!regenerateCaption && !regenerateHashtags) {
+      console.log('4-1. 画像解析実行（Vision API）')
       // 画像解析（Vision APIを使用）
       const analysisResponse = await openai.chat.completions.create({
         model: model,
@@ -326,6 +351,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log('4-2. 並列AI処理実行（キャプション・ハッシュタグ・画像処理提案）')
     // キャプション生成とハッシュタグ生成を並列実行
     const [captionResponse, hashtagResponse, imageProcessingResponse] = await Promise.all([
       // キャプション生成
@@ -551,7 +577,8 @@ ${captionPrompt}
       })
     }
 
-    return NextResponse.json({
+    console.log('6. レスポンス生成開始')
+    const responseData = {
       success: true,
       processedImage,
       caption,
@@ -572,18 +599,42 @@ ${captionPrompt}
         processingTime: Date.now() - startTime
       },
       fromCache: false
+    }
+    
+    console.log('レスポンスデータ:', {
+      success: responseData.success,
+      hasProcessedImage: !!responseData.processedImage,
+      captionLength: responseData.caption?.length || 0,
+      hashtagCount: responseData.hashtags?.length || 0,
+      processingTime: responseData.performance.processingTime
     })
+    
+    console.log('=== AI処理API完了 ===', { 
+      duration: Date.now() - startTime + 'ms',
+      timestamp: new Date().toISOString()
+    })
+    
+    return NextResponse.json(responseData)
 
   } catch (error) {
-    console.error('AI処理エラー:', error)
-    return NextResponse.json(
-      { 
-        error: 'AI処理でエラーが発生しました', 
-        details: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    )
+    console.error('=== AI処理API エラー ===')
+    console.error('エラー詳細:', {
+      name: error instanceof Error ? error.name : 'unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'no stack',
+      timestamp: new Date().toISOString(),
+      duration: Date.now() - startTime + 'ms'
+    })
+    
+    const errorResponse = { 
+      error: 'AI処理でエラーが発生しました', 
+      details: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
+    }
+    
+    console.log('エラーレスポンス:', errorResponse)
+    
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }
 

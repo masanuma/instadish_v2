@@ -173,6 +173,8 @@ export default function Home() {
     setFromCache(false)
 
     try {
+      console.log('AI処理リクエスト開始:', { effectStrength, businessType })
+      
       const response = await fetch('/api/ai-process', {
         method: 'POST',
         headers: {
@@ -185,8 +187,26 @@ export default function Home() {
         })
       })
 
+      console.log('レスポンス受信:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        contentType: response.headers.get('content-type')
+      })
+
+      // レスポンスの内容を確認
+      const responseText = await response.text()
+      console.log('レスポンステキスト:', responseText)
+
       if (response.ok) {
-        const result = await response.json()
+        // JSONパースを試行
+        let result
+        try {
+          result = JSON.parse(responseText)
+        } catch (parseError) {
+          console.error('JSONパースエラー:', parseError)
+          throw new Error(`レスポンスのJSONパースに失敗: ${responseText.substring(0, 200)}...`)
+        }
         setProcessedImage(result.processedImage)
         setCaption(result.caption)
         setHashtags(result.hashtags.join('\n'))
@@ -225,13 +245,18 @@ export default function Home() {
         
         // その他のエラーの場合は詳細情報を表示
         try {
-          const errorData = await response.json()
+          let errorData
+          try {
+            errorData = JSON.parse(responseText)
+          } catch {
+            errorData = { error: 'JSONパースエラー', details: responseText.substring(0, 500) }
+          }
           const errorMessage = errorData.error || 'AI処理でエラーが発生しました'
           const errorDetails = errorData.details ? `\n詳細: ${errorData.details}` : ''
           const timestamp = errorData.timestamp ? `\n時刻: ${new Date(errorData.timestamp).toLocaleString()}` : ''
           alert(`${errorMessage}${errorDetails}${timestamp}`)
         } catch {
-          alert(`AI処理でエラーが発生しました (HTTP ${response.status})`)
+          alert(`AI処理でエラーが発生しました (HTTP ${response.status})\nレスポンス: ${responseText.substring(0, 200)}`)
         }
       }
     } catch (error) {
