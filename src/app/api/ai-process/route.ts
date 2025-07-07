@@ -306,19 +306,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('4. 画像解析・AI処理開始')
-    // 再生成の場合は画像解析をスキップ
-    let imageAnalysis = ''
-    if (!regenerateCaption && !regenerateHashtags) {
-      console.log('4-1. 画像解析実行（Vision API）')
-      // 画像解析（Vision APIを使用）
-      const analysisResponse = await openai.chat.completions.create({
-        model: model,
-        messages: [
-          {
-            role: "system",
-            content: fastMode 
-              ? `あなたは料理写真の専門家です。以下の点を簡潔に分析してください：
+    console.log('4. 超高速並列処理開始（画像解析+Sharp.js+基本AI処理）')
+    
+    // 画像解析用のプロミス作成
+    const imageAnalysisPromise = (!regenerateCaption && !regenerateHashtags) 
+      ? openai.chat.completions.create({
+          model: model,
+          messages: [
+            {
+              role: "system",
+              content: fastMode 
+                ? `あなたは料理写真の専門家です。以下の点を簡潔に分析してください：
 1. 料理の種類と名前
 2. 主要な食材
 3. 調理方法
@@ -327,7 +325,7 @@ export async function POST(request: NextRequest) {
 6. 季節感や旬の要素
 
 簡潔で要点を押さえた分析をしてください。`
-              : `あなたは料理写真の専門家です。以下の点を詳細に分析してください：
+                : `あなたは料理写真の専門家です。以下の点を詳細に分析してください：
 
 1. 料理の種類と名前
 2. 食材の詳細（肉、魚、野菜、調味料など）
@@ -341,15 +339,15 @@ export async function POST(request: NextRequest) {
 10. SNS投稿に適した魅力ポイント
 
 分析結果は構造化して、キャプション生成に活用できる形で出力してください。`
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: fastMode
-                  ? `この料理写真を分析し、料理名、主要食材、見た目の特徴を具体的に説明してください。店舗: ${session.name || '未設定'}`
-                  : `この料理写真を詳細に分析し、以下の項目を具体的に説明してください：
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: fastMode
+                    ? `この料理写真を分析し、料理名、主要食材、見た目の特徴を具体的に説明してください。店舗: ${session.name || '未設定'}`
+                    : `この料理写真を詳細に分析し、以下の項目を具体的に説明してください：
 
 【分析項目】
 1. 料理の正確な名前・種類
@@ -368,25 +366,37 @@ export async function POST(request: NextRequest) {
 - 一般的ではなく、この写真特有の内容を重視
 
 店舗: ${session.name || '未設定'}`
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: image,
-                  detail: fastMode ? "low" : "high"
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: image,
+                    detail: fastMode ? "low" : "high"
+                  }
                 }
-              }
-            ]
-          }
-        ],
-        max_tokens: maxTokens,
-        temperature: 0.2
-      })
+              ]
+            }
+          ],
+          max_tokens: maxTokens,
+          temperature: 0.2
+        })
+      : Promise.resolve({ choices: [{ message: { content: `${session.name || '未設定'}の美味しそうな料理写真` } }] })
 
-      imageAnalysis = analysisResponse.choices[0]?.message?.content || ''
-    } else {
-      imageAnalysis = `${session.name || '未設定'}の美味しそうな料理写真`
-    }
+    // Sharp.js画像処理を並列実行用プロミス作成
+    const sharpProcessingPromise = processImageWithSharp(image, effectStrength).catch(error => {
+      console.error('Sharp.js並列処理失敗:', error)
+      return image // エラー時は元画像を返す
+    })
+
+    console.log('4-1. 画像解析とSharp.js処理を並列開始')
+    // 画像解析とSharp.js処理を並列実行
+    const [analysisResponse, parallelProcessedImage] = await Promise.all([
+      imageAnalysisPromise,
+      sharpProcessingPromise
+    ])
+    
+    const imageAnalysis = analysisResponse.choices[0]?.message?.content || `${session.name || '未設定'}の美味しそうな料理写真`
+    console.log('画像解析+Sharp.js並列処理完了')
 
     // 並列処理でAI生成を高速化
     const captionPrompt = customPrompt || 'この料理の魅力を表現するキャプションを生成してください'
@@ -603,22 +613,14 @@ ${captionPrompt}
     // 画像エフェクトの適用（AIによる最適化）
     let imageEffects = generateImageEffects(effectStrength)
     
-    // 実際の画像処理をSharp.jsで実行（最適化版）
-    let processedImage: string
-    console.log('Sharp.js処理を開始（最適化版）')
-    try {
-      processedImage = await processImageWithSharp(image, effectStrength)
-      console.log('Sharp.js処理成功 - 高品質な画像処理完了')
-    } catch (error) {
-      console.error('Sharp.js処理失敗、代替処理に切り替え:', error)
-      processedImage = image
-    }
+    // Sharp.js処理は既に並列実行済み
+    console.log('Sharp.js処理完了（並列実行済み）')
 
     // 結果をキャッシュに保存
     if (!regenerateCaption && !regenerateHashtags) {
       const imageHash = generateImageHash(image)
       await cacheResult(imageHash, 'general', effectStrength, {
-        processedImage,
+        processedImage: parallelProcessedImage,
         caption,
         hashtags: hashtagArray,
         analysis: imageAnalysis,
@@ -629,7 +631,7 @@ ${captionPrompt}
     console.log('6. レスポンス生成開始')
     const responseData = {
       success: true,
-      processedImage,
+      processedImage: parallelProcessedImage,
       caption,
       hashtags: hashtagArray,
       analysis: imageAnalysis,
