@@ -525,15 +525,19 @@ ${captionPrompt}
     // 画像エフェクトの適用（AIによる最適化）
     let imageEffects = generateImageEffects(effectStrength)
     
-    // 実際の画像処理をSharp.jsで実行
+    // 実際の画像処理をSharp.jsで実行（一時的に無効化）
     let processedImage: string
-    try {
-      processedImage = await processImageWithSharp(image, effectStrength)
-    } catch (error) {
-      console.error('Sharp.js処理失敗、代替処理に切り替え:', error)
-      // Sharp.jsが失敗した場合は元画像を返す
-      processedImage = image
-    }
+    console.log('Sharp.js処理をスキップ（一時的な修正）')
+    // 一時的にSharp.js処理を無効化して元画像を返す
+    processedImage = image
+    
+    // TODO: Sharp.js処理の問題解決後に有効化
+    // try {
+    //   processedImage = await processImageWithSharp(image, effectStrength)
+    // } catch (error) {
+    //   console.error('Sharp.js処理失敗、代替処理に切り替え:', error)
+    //   processedImage = image
+    // }
 
     // 結果をキャッシュに保存
     if (!regenerateCaption && !regenerateHashtags) {
