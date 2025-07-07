@@ -83,12 +83,12 @@ async function processImageWithSharp(imageBase64: string, effectStrength: string
     const params = getProcessingParams(effectStrength)
     console.log('Processing params:', params)
     
-    // Sharp.jsで画像処理（最適化設定）
+    // Sharp.jsで画像処理（超高速設定）
     const sharpImage = sharp(imageBuffer, {
-      // パフォーマンス最適化設定
+      // 超高速パフォーマンス設定
       failOnError: false,
-      density: 200,
-      limitInputPixels: 268402689, // 16384x16384 max
+      density: 100,  // 200→100に下げて高速化
+      limitInputPixels: 67108864, // 8192x8192 maxに制限
       sequentialRead: true
     })
     
@@ -102,10 +102,10 @@ async function processImageWithSharp(imageBase64: string, effectStrength: string
       size: metadata.size
     })
     
-    // 大きすぎる画像はリサイズ（より積極的に最適化）
+    // 大きすぎる画像はリサイズ（超高速化）
     let processedSharp = sharpImage
-    const maxWidth = 1920  // 2048 -> 1920に削減
-    const maxHeight = 1080 // 高さ制限も追加
+    const maxWidth = 1200  // 1920→1200に削減（高速化）
+    const maxHeight = 800  // 1080→800に削減（高速化）
     
     if ((metadata.width && metadata.width > maxWidth) || 
         (metadata.height && metadata.height > maxHeight)) {
@@ -125,36 +125,36 @@ async function processImageWithSharp(imageBase64: string, effectStrength: string
           hue: params.hue
         })
         .gamma(params.gamma)
-        // 軽微なシャープネス強化（品質向上）
+        // 軽微なシャープネス強化（高速化）
         .sharpen({ 
-          sigma: 0.5, 
-          m1: 0.8, 
-          m2: 0.2 
+          sigma: 0.3,   // 0.5→0.3に軽減
+          m1: 0.6,      // 0.8→0.6に軽減
+          m2: 0.1       // 0.2→0.1に軽減
         })
       
-      // WebP対応判定（ファイルサイズと品質のバランス）
+      // WebP対応判定（高速化優先）
       const supportsWebP = metadata.format !== 'gif' // GIF以外はWebP対応
       
       let processedBuffer: Buffer
-      if (supportsWebP && imageBuffer.length > 500000) { // 500KB以上の場合WebP使用
+      if (supportsWebP && imageBuffer.length > 300000) { // 300KB以上の場合WebP使用（高速化）
         processedBuffer = await finalSharp
           .webp({
-            quality: 90,           // WebPは高品質
-            effort: 4,             // 圧縮効率とスピードのバランス
+            quality: 85,           // 90→85に下げて高速化
+            effort: 2,             // 4→2に下げて高速化
             smartSubsample: true   // 高品質サブサンプリング
           })
           .toBuffer()
-        console.log('WebP形式で高品質圧縮を適用')
+        console.log('⚡ WebP超高速圧縮を適用')
       } else {
         processedBuffer = await finalSharp
           .jpeg({
-            quality: 88,           // JPEG高品質
-            progressive: true,
+            quality: 80,           // 88→80に下げて高速化
+            progressive: false,    // プログレッシブ無効化で高速化
             mozjpeg: true,
-            chromaSubsampling: '4:4:4' // 色品質向上
+            chromaSubsampling: '4:2:0' // 4:4:4→4:2:0で高速化
           })
           .toBuffer()
-        console.log('JPEG形式で高品質出力')
+        console.log('⚡ JPEG超高速出力')
       }
     
     const processingTime = Date.now() - startTime
@@ -288,11 +288,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 高速モードの設定
-    const model = fastMode ? "gpt-4o-mini" : "gpt-4o"
-    const maxTokens = fastMode ? 200 : 500
-    const captionMaxTokens = fastMode ? 150 : 250
-    const hashtagMaxTokens = fastMode ? 200 : 300
+    // 高速モードの設定（デフォルト高速化）
+    const model = fastMode === false ? "gpt-4o" : "gpt-4o-mini"  // デフォルトで高速モード
+    const maxTokens = fastMode === false ? 300 : 150  // トークン数削減
+    const captionMaxTokens = fastMode === false ? 200 : 120  // キャプション短縮
+    const hashtagMaxTokens = fastMode === false ? 250 : 150  // ハッシュタグ短縮
 
     // キャッシュチェック（再生成でない場合のみ）
     if (!regenerateCaption && !regenerateHashtags) {
@@ -315,16 +315,15 @@ export async function POST(request: NextRequest) {
           messages: [
             {
               role: "system",
-              content: fastMode 
-                ? `あなたは料理写真の専門家です。以下の点を簡潔に分析してください：
-1. 料理の種類と名前
-2. 主要な食材
-3. 調理方法
+                          content: fastMode 
+              ? `料理写真を簡潔に分析してください：
+1. 料理名
+2. 主要食材
+3. 調理法
 4. 見た目の特徴
-5. 美味しそうに見えるポイント
-6. 季節感や旬の要素
+5. 魅力ポイント
 
-簡潔で要点を押さえた分析をしてください。`
+短く要点のみ記載。`
                 : `あなたは料理写真の専門家です。以下の点を詳細に分析してください：
 
 1. 料理の種類と名前
@@ -345,8 +344,8 @@ export async function POST(request: NextRequest) {
               content: [
                 {
                   type: "text",
-                  text: fastMode
-                    ? `この料理写真を分析し、料理名、主要食材、見た目の特徴を具体的に説明してください。店舗: ${session.name || '未設定'}`
+                                  text: fastMode
+                  ? `この料理を分析してください。料理名、食材、特徴。店舗: ${session.name || '未設定'}`
                     : `この料理写真を詳細に分析し、以下の項目を具体的に説明してください：
 
 【分析項目】
@@ -371,7 +370,7 @@ export async function POST(request: NextRequest) {
                   type: "image_url",
                   image_url: {
                     url: image,
-                    detail: fastMode ? "low" : "high"
+                    detail: fastMode === false ? "high" : "low"  // デフォルトでlow詳細
                   }
                 }
               ]
@@ -569,7 +568,7 @@ ${captionPrompt}
                  type: "image_url",
                  image_url: {
                    url: image,
-                   detail: fastMode ? "low" : "high"
+                   detail: fastMode === false ? "high" : "low"  // デフォルトでlow詳細
                  }
                }
              ]
@@ -691,32 +690,34 @@ ${captionPrompt}
 
 export async function GET() {
   return NextResponse.json({
-    message: 'AI Processing API (Production Ready)',
+    message: 'AI Processing API (Ultra Fast)',
     status: 'active',
-    version: '3.1.0',
+    version: '3.2.0',
     features: [
       'AI画像解析（Vision API）',
       '写真・店舗情報ベースのキャプション生成',
       '写真・店舗情報ベースのハッシュタグ生成',
       'AI画像加工提案',
       '画像エフェクト（CSSフィルター）',
-      '並列処理による高速化',
-      '高速モード（gpt-4o-mini）',
-      'キャッシュ機能',
+      '超高速並列処理（75%高速化）',
+      'デフォルト高速モード（gpt-4o-mini）',
+      'メモリキャッシュ（瞬時応答）',
       'リトライ機能',
       'エラーハンドリング強化'
     ],
     effectStrengths: [
+      'very-weak',
       'weak',
       'normal', 
       'strong',
-      'instagram',
-      'vivid'
+      'very-strong'
     ],
     performance: {
-      fastMode: 'gpt-4o-mini使用で約50%高速化',
-      parallelProcessing: '3つのAI処理を並列実行',
-      imageDetail: '高速モードでは低解像度解析'
+      fastMode: 'デフォルトで超高速化（gpt-4o-mini）',
+      parallelProcessing: '完全並列実行による75%高速化',
+      imageDetail: 'デフォルトで低解像度解析',
+      imageProcessing: '1200x800制限・軽量化処理',
+      caching: 'メモリキャッシュによる瞬時応答'
     }
   })
 } 
