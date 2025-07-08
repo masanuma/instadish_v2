@@ -40,6 +40,8 @@ export default function AdminDashboard() {
   const [stores, setStores] = useState<StoreWithSubscription[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isRetrying, setIsRetrying] = useState(false)
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null)
   const [selectedStore, setSelectedStore] = useState<StoreWithSubscription | null>(null)
   const [showStoreModal, setShowStoreModal] = useState(false)
   const [stats, setStats] = useState<Stats>({
@@ -65,32 +67,102 @@ export default function AdminDashboard() {
     fetchStores(token)
   }, [router])
 
-  const fetchStores = async (token: string) => {
+  const fetchStores = async (token: string, retryCount: number = 0) => {
+    const maxRetries = 3
+    const timeout = 15000 // 15秒タイムアウト
+    
+    // 再試行状態の管理
+    if (retryCount > 0) {
+      setIsRetrying(true)
+    }
+    
     try {
+      console.log('管理者店舗情報取得開始:', { retryCount, timestamp: new Date().toISOString() })
+      
+      // AbortController でタイムアウト設定
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
+      
       const response = await fetch('/api/admin/stores', {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      console.log('API応答受信:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
       })
 
       if (response.status === 401) {
+        console.log('認証エラー: トークンを削除してログイン画面に遷移')
         localStorage.removeItem('adminToken')
         router.push('/admin/login')
         return
       }
 
       if (!response.ok) {
-        throw new Error('店舗情報の取得に失敗しました')
+        const errorText = await response.text()
+        console.error('API応答エラー:', { status: response.status, error: errorText })
+        throw new Error(`店舗情報の取得に失敗しました (${response.status}): ${errorText}`)
       }
 
       const data = await response.json()
-      setStores(data.stores)
-      setStats(data.stats)
+      console.log('店舗データ取得成功:', { 
+        storeCount: data.stores?.length || 0,
+        stats: data.stats 
+      })
+      
+      setStores(data.stores || [])
+      setStats(data.stats || {
+        totalStores: 0,
+        activeSubscriptions: 0,
+        trialingStores: 0,
+        canceledSubscriptions: 0
+      })
+      setError('') // エラーをクリア
+      setLastFetchTime(new Date()) // 最後の取得時間を記録
+      
     } catch (error) {
-      setError('データの取得に失敗しました')
       console.error('店舗取得エラー:', error)
+      
+      // タイムアウトエラーの処理
+      if (error instanceof Error && error.name === 'AbortError') {
+        const timeoutError = `接続がタイムアウトしました (${timeout/1000}秒)`
+        setError(timeoutError)
+        console.error('タイムアウトエラー:', timeoutError)
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'データの取得に失敗しました'
+        setError(errorMessage)
+      }
+      
+      // 再試行処理
+      if (retryCount < maxRetries) {
+        console.log(`再試行中... (${retryCount + 1}/${maxRetries})`)
+        setTimeout(() => {
+          fetchStores(token, retryCount + 1)
+        }, 2000 * (retryCount + 1)) // 指数バックオフ
+        return
+      }
+      
     } finally {
       setIsLoading(false)
+      setIsRetrying(false)
+    }
+  }
+
+  // 手動再試行機能
+  const handleRetry = () => {
+    const token = localStorage.getItem('adminToken')
+    if (token) {
+      setIsLoading(true)
+      setError('')
+      fetchStores(token)
     }
   }
 
@@ -245,7 +317,14 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">読み込み中...</p>
+          <p className="mt-4 text-gray-600">
+            {isRetrying ? '再試行中...' : '読み込み中...'}
+          </p>
+          {isRetrying && (
+            <p className="mt-2 text-sm text-gray-500">
+              データの取得に時間がかかっています
+            </p>
+          )}
         </div>
       </div>
     )
@@ -259,14 +338,51 @@ export default function AdminDashboard() {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">InstaDish Pro 管理者ダッシュボード</h1>
-              <p className="text-gray-600">店舗管理・サブスクリプション管理</p>
+              <p className="text-gray-600">
+                店舗管理・サブスクリプション管理
+                {lastFetchTime && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    (最終更新: {lastFetchTime.toLocaleString('ja-JP')})
+                  </span>
+                )}
+              </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-            >
-              ログアウト
-            </button>
+            <div className="flex space-x-3">
+              <button
+                onClick={handleRetry}
+                disabled={isLoading || isRetrying}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                {isLoading || isRetrying ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    更新中...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    更新
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => router.push('/admin/performance')}
+                className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                パフォーマンス監視
+              </button>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+              >
+                ログアウト
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -274,7 +390,31 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">エラーが発生しました</p>
+                <p className="text-sm mt-1">{error}</p>
+                {lastFetchTime && (
+                  <p className="text-xs text-red-600 mt-1">
+                    最後の更新: {lastFetchTime.toLocaleString('ja-JP')}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={handleRetry}
+                disabled={isLoading || isRetrying}
+                className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                {isLoading || isRetrying ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    再試行中...
+                  </>
+                ) : (
+                  '再試行'
+                )}
+              </button>
+            </div>
           </div>
         )}
 
