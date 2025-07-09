@@ -560,7 +560,7 @@ export default function Home() {
                     <img
                       src={selectedImage}
                       alt="アップロードされた画像"
-                      className="w-full max-w-none object-cover rounded-lg shadow-md"
+                      className="w-full max-w-none object-contain rounded-lg shadow-md"
                       style={{ height: 'auto', minHeight: '300px', maxHeight: '500px' }}
                     />
                     <button
@@ -657,7 +657,8 @@ export default function Home() {
                       <img 
                         src={selectedImage || ''} 
                         alt="元画像" 
-                        className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-lg border shadow-lg"
+                        className="w-full object-contain rounded-lg border shadow-lg"
+                        style={{ maxHeight: '400px' }}
                       />
                     </div>
                     <div>
@@ -667,7 +668,8 @@ export default function Home() {
                       <img 
                         src={processedImage} 
                         alt="処理済み画像" 
-                        className="w-full h-64 sm:h-80 lg:h-96 object-cover rounded-lg border shadow-lg"
+                        className="w-full object-contain rounded-lg border shadow-lg"
+                        style={{ maxHeight: '400px' }}
                       />
                     </div>
                   </div>
