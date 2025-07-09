@@ -813,7 +813,7 @@ export default function Home() {
                       <textarea
                         value={captionPrompt}
                         onChange={(e) => setCaptionPrompt(e.target.value)}
-                        className="w-full h-20 p-2 sm:p-3 border border-blue-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                        className="w-full h-48 p-2 sm:p-3 border border-blue-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                         placeholder="どのようなキャプションにしたいか具体的に書いてください（例：もっとフォーマルに、季節感を入れて、若者向けの表現で、など）"
                       />
                       <div className="flex gap-2 mt-3">
@@ -838,7 +838,7 @@ export default function Home() {
                     <textarea
                       value={caption || ''}
                       onChange={(e) => setCaption(e.target.value)}
-                      className="w-full h-24 sm:h-32 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                      className="w-full h-60 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="キャプションを編集できます..."
                     />
                     <p className="text-xs text-gray-500 mt-2">✏️ 自由に編集してからコピーできます</p>
@@ -874,7 +874,7 @@ export default function Home() {
                       <textarea
                         value={hashtagPrompt}
                         onChange={(e) => setHashtagPrompt(e.target.value)}
-                        className="w-full h-20 p-2 sm:p-3 border border-green-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base"
+                        className="w-full h-48 p-2 sm:p-3 border border-green-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base"
                         placeholder="どのようなハッシュタグにしたいか具体的に書いてください（例：トレンド重視、地域密着、ターゲット年齢層を意識して、など）"
                       />
                       <div className="flex gap-2 mt-3">
@@ -899,7 +899,7 @@ export default function Home() {
                     <textarea
                       value={hashtags ? hashtags.split(' ').filter((tag: string) => tag.trim() !== '').join('\n') : ''}
                       onChange={(e) => setHashtags(e.target.value.split('\n').join(' '))}
-                      className="w-full h-36 sm:h-48 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-xs sm:text-sm"
+                      className="w-full h-60 p-2 sm:p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-xs sm:text-sm"
                       placeholder="ハッシュタグを編集できます..."
                     />
                     <p className="text-xs text-gray-500 mt-2">✏️ 自由に編集してからコピーできます</p>
