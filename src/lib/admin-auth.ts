@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { supabase } from './supabase'
+import { supabaseAdmin } from './supabase'
 
 const JWT_SECRET = process.env.JWT_SECRET!
 const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24時間
@@ -28,7 +28,7 @@ export interface AdminSession {
 // 管理者認証
 export async function authenticateAdmin(username: string, password: string): Promise<AdminUser | null> {
   try {
-    const { data: admin, error } = await supabase
+    const { data: admin, error } = await supabaseAdmin
       .from('admin_users')
       .select('*')
       .eq('username', username)
@@ -57,7 +57,7 @@ export async function createAdminSession(adminId: string): Promise<string | null
     const token = generateAdminToken(adminId)
     const expiresAt = new Date(Date.now() + SESSION_DURATION).toISOString()
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('admin_sessions')
       .insert({
         admin_id: adminId,
@@ -80,32 +80,37 @@ export async function createAdminSession(adminId: string): Promise<string | null
 // 管理者セッション検証
 export async function validateAdminSession(token: string): Promise<AdminUser | null> {
   try {
+    console.log('管理者セッション検証開始:', { tokenStart: token.substring(0, 50) + '...' })
+    
     // JWTトークンを検証
     const decoded = verifyAdminToken(token)
+    console.log('JWT検証結果:', decoded ? 'OK' : 'NG')
     if (!decoded) {
       return null
     }
 
     // データベースでセッションを確認
-    const { data: session, error: sessionError } = await supabase
+    const { data: session, error: sessionError } = await supabaseAdmin
       .from('admin_sessions')
       .select('*')
       .eq('token', token)
       .gt('expires_at', new Date().toISOString())
       .single()
 
+    console.log('セッションDB検索結果:', { session: session ? 'あり' : 'なし', error: sessionError })
     if (sessionError || !session) {
       return null
     }
 
     // 管理者情報を取得
-    const { data: admin, error: adminError } = await supabase
+    const { data: admin, error: adminError } = await supabaseAdmin
       .from('admin_users')
       .select('*')
       .eq('id', session.admin_id)
       .eq('is_active', true)
       .single()
 
+    console.log('管理者情報取得結果:', { admin: admin ? admin.username : 'なし', error: adminError })
     if (adminError || !admin) {
       return null
     }
@@ -120,7 +125,7 @@ export async function validateAdminSession(token: string): Promise<AdminUser | n
 // 管理者セッション削除
 export async function destroyAdminSession(token: string): Promise<void> {
   try {
-    await supabase
+    await supabaseAdmin
       .from('admin_sessions')
       .delete()
       .eq('token', token)
@@ -155,7 +160,7 @@ function verifyAdminToken(token: string): { adminId: string } | null {
 // 期限切れ管理者セッションを削除
 export async function cleanupExpiredAdminSessions(): Promise<void> {
   try {
-    await supabase
+    await supabaseAdmin
       .from('admin_sessions')
       .delete()
       .lt('expires_at', new Date().toISOString())

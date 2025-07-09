@@ -2,8 +2,13 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+// 一般ユーザー用クライアント（匿名キー）
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// 管理者用クライアント（サービスロールキー）
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
 
 // 店舗情報の型定義
 export interface Store {

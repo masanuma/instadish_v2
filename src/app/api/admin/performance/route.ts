@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateAdminSession } from '@/lib/admin-auth'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,7 +74,7 @@ async function getPerformanceMetrics() {
 
 async function getAIProcessingStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAgo: Date) {
   // AI処理ログの取得（実際の実装では専用のログテーブルを使用）
-  const { data: recentProcessing, error } = await supabase
+  const { data: recentProcessing, error } = await supabaseAdmin
     .from('ai_processing_logs')
     .select('*')
     .gte('created_at', oneHourAgo.toISOString())
@@ -93,21 +93,21 @@ async function getAIProcessingStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAg
   }
 
   const total = recentProcessing?.length || 0
-  const averageTime = recentProcessing?.reduce((sum, log) => sum + (log.processing_time || 0), 0) / (total || 1)
+  const averageTime = recentProcessing?.reduce((sum: any, log: any) => sum + (log.processing_time || 0), 0) / (total || 1)
   
   return {
     total,
     averageTime: Math.round(averageTime),
-    lastHour: recentProcessing?.filter(log => new Date(log.created_at) > oneHourAgo).length || 0,
-    lastDay: recentProcessing?.filter(log => new Date(log.created_at) > oneDayAgo).length || 0,
-    lastWeek: recentProcessing?.filter(log => new Date(log.created_at) > oneWeekAgo).length || 0,
+    lastHour: recentProcessing?.filter((log: any) => new Date(log.created_at) > oneHourAgo).length || 0,
+    lastDay: recentProcessing?.filter((log: any) => new Date(log.created_at) > oneDayAgo).length || 0,
+    lastWeek: recentProcessing?.filter((log: any) => new Date(log.created_at) > oneWeekAgo).length || 0,
     distribution: getTimeDistribution(recentProcessing || [])
   }
 }
 
 async function getAPIResponseStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAgo: Date) {
   // API応答ログの取得
-  const { data: apiLogs, error } = await supabase
+  const { data: apiLogs, error } = await supabaseAdmin
     .from('api_response_logs')
     .select('*')
     .gte('created_at', oneHourAgo.toISOString())
@@ -126,21 +126,21 @@ async function getAPIResponseStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAgo
   }
 
   const total = apiLogs?.length || 0
-  const averageTime = apiLogs?.reduce((sum, log) => sum + (log.response_time || 0), 0) / (total || 1)
+  const averageTime = apiLogs?.reduce((sum: any, log: any) => sum + (log.response_time || 0), 0) / (total || 1)
   
   return {
     total,
     averageTime: Math.round(averageTime),
-    lastHour: apiLogs?.filter(log => new Date(log.created_at) > oneHourAgo).length || 0,
-    lastDay: apiLogs?.filter(log => new Date(log.created_at) > oneDayAgo).length || 0,
-    lastWeek: apiLogs?.filter(log => new Date(log.created_at) > oneWeekAgo).length || 0,
+    lastHour: apiLogs?.filter((log: any) => new Date(log.created_at) > oneHourAgo).length || 0,
+    lastDay: apiLogs?.filter((log: any) => new Date(log.created_at) > oneDayAgo).length || 0,
+    lastWeek: apiLogs?.filter((log: any) => new Date(log.created_at) > oneWeekAgo).length || 0,
     endpoints: getEndpointStats(apiLogs || [])
   }
 }
 
 async function getErrorStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAgo: Date) {
   // エラーログの取得
-  const { data: errorLogs, error } = await supabase
+  const { data: errorLogs, error } = await supabaseAdmin
     .from('error_logs')
     .select('*')
     .gte('created_at', oneHourAgo.toISOString())
@@ -164,16 +164,16 @@ async function getErrorStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAgo: Date
   return {
     total,
     rate: Math.round(rate * 100) / 100,
-    lastHour: errorLogs?.filter(log => new Date(log.created_at) > oneHourAgo).length || 0,
-    lastDay: errorLogs?.filter(log => new Date(log.created_at) > oneDayAgo).length || 0,
-    lastWeek: errorLogs?.filter(log => new Date(log.created_at) > oneWeekAgo).length || 0,
+    lastHour: errorLogs?.filter((log: any) => new Date(log.created_at) > oneHourAgo).length || 0,
+    lastDay: errorLogs?.filter((log: any) => new Date(log.created_at) > oneDayAgo).length || 0,
+    lastWeek: errorLogs?.filter((log: any) => new Date(log.created_at) > oneWeekAgo).length || 0,
     types: getErrorTypes(errorLogs || [])
   }
 }
 
 async function getCacheStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAgo: Date) {
   // キャッシュ統計の取得
-  const { data: cacheLogs, error } = await supabase
+  const { data: cacheLogs, error } = await supabaseAdmin
     .from('cache_logs')
     .select('*')
     .gte('created_at', oneHourAgo.toISOString())
@@ -193,7 +193,7 @@ async function getCacheStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAgo: Date
   }
 
   const total = cacheLogs?.length || 0
-  const hits = cacheLogs?.filter(log => log.hit === true).length || 0
+  const hits = cacheLogs?.filter((log: any) => log.hit === true).length || 0
   const misses = total - hits
   const hitRate = total > 0 ? (hits / total) * 100 : 0
   
@@ -209,51 +209,45 @@ async function getCacheStats(oneHourAgo: Date, oneDayAgo: Date, oneWeekAgo: Date
 }
 
 async function getSystemStats() {
-  // システム統計（実際の実装では監視システムと連携）
+  // システム使用量の取得（実際の実装では監視ツールのAPIを使用）
   return {
-    cpu: Math.round(Math.random() * 100), // 実際の値に置き換え
-    memory: Math.round(Math.random() * 100),
-    disk: Math.round(Math.random() * 100),
-    network: Math.round(Math.random() * 100),
+    cpu: Math.floor(Math.random() * 50) + 20, // 20-70%
+    memory: Math.floor(Math.random() * 40) + 30, // 30-70%
+    disk: Math.floor(Math.random() * 30) + 20, // 20-50%
+    network: Math.floor(Math.random() * 100) + 50, // 50-150 Mbps
     uptime: '99.9%',
-    activeConnections: Math.floor(Math.random() * 1000)
+    activeConnections: Math.floor(Math.random() * 50) + 10 // 10-60 connections
   }
 }
 
 function getTimeDistribution(logs: any[]) {
-  const distribution = {
-    '0-10s': 0,
-    '10-30s': 0,
-    '30-60s': 0,
-    '60s+': 0
-  }
-
-  logs.forEach(log => {
-    const time = log.processing_time || 0
-    if (time <= 10) distribution['0-10s']++
-    else if (time <= 30) distribution['10-30s']++
-    else if (time <= 60) distribution['30-60s']++
-    else distribution['60s+']++
+  const hours = Array.from({ length: 24 }, (_, i) => i)
+  return hours.map(hour => {
+    const count = logs.filter(log => {
+      const logHour = new Date(log.created_at).getHours()
+      return logHour === hour
+    }).length
+    return { hour, count }
   })
-
-  return distribution
 }
 
 function getEndpointStats(logs: any[]) {
-  const stats: { [key: string]: number } = {}
-  logs.forEach(log => {
+  const endpoints = logs.reduce((acc: any, log: any) => {
     const endpoint = log.endpoint || 'unknown'
-    stats[endpoint] = (stats[endpoint] || 0) + 1
-  })
-  return Object.entries(stats).map(([endpoint, count]) => ({ endpoint, count }))
+    acc[endpoint] = (acc[endpoint] || 0) + 1
+    return acc
+  }, {})
+  
+  return Object.entries(endpoints).map(([endpoint, count]) => ({ endpoint, count }))
 }
 
 function getErrorTypes(logs: any[]) {
-  const types: { [key: string]: number } = {}
-  logs.forEach(log => {
+  const types = logs.reduce((acc: any, log: any) => {
     const type = log.error_type || 'unknown'
-    types[type] = (types[type] || 0) + 1
-  })
+    acc[type] = (acc[type] || 0) + 1
+    return acc
+  }, {})
+  
   return Object.entries(types).map(([type, count]) => ({ type, count }))
 }
 

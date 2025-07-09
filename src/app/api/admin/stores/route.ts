@@ -1,24 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateAdminSession } from '@/lib/admin-auth'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
     // 管理者認証確認
     const authHeader = request.headers.get('authorization')
+    console.log('管理者stores認証開始:', { authHeader: authHeader ? authHeader.substring(0, 30) + '...' : 'なし' })
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('認証ヘッダーが無効:', { authHeader })
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
 
     const token = authHeader.split(' ')[1]
+    console.log('トークン抽出:', { tokenStart: token.substring(0, 50) + '...' })
+    
     const admin = await validateAdminSession(token)
+    console.log('管理者検証結果:', { admin: admin ? admin.username : 'なし' })
     
     if (!admin) {
       return NextResponse.json({ error: '無効なセッションです' }, { status: 401 })
     }
 
     // 店舗一覧を取得（サブスクリプション情報も含む）
-    const { data: stores, error: storesError } = await supabase
+    // is_deletedカラムが存在しない場合に備えて条件を除去
+    const { data: stores, error: storesError } = await supabaseAdmin
       .from('stores')
       .select(`
         *,
@@ -32,7 +39,6 @@ export async function GET(request: NextRequest) {
           cancel_at_period_end
         )
       `)
-      .eq('is_deleted', false)
       .order('created_at', { ascending: false })
 
     if (storesError) {
@@ -51,7 +57,7 @@ export async function GET(request: NextRequest) {
       canceledSubscriptions: 0
     }
 
-    stores.forEach(store => {
+    stores.forEach((store: any) => {
       const subscription = store.subscriptions?.[0]
       if (subscription) {
         if (subscription.status === 'active') {
@@ -65,7 +71,7 @@ export async function GET(request: NextRequest) {
     })
 
     // パスワードハッシュを除外して返す
-    const storesWithoutPassword = stores.map(store => {
+    const storesWithoutPassword = stores.map((store: any) => {
       const { password_hash, ...storeData } = store
       return storeData
     })

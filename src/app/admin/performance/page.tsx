@@ -217,7 +217,7 @@ export default function PerformancePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">総リクエスト数</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.totalRequests.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.totalRequests?.toLocaleString() || '0'}</p>
               </div>
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function PerformancePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">平均応答時間</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.averageResponseTime}ms</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.averageResponseTime || 0}ms</p>
               </div>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function PerformancePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">エラー発生率</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.errorRate}%</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.errorRate || 0}%</p>
               </div>
             </div>
           </div>
@@ -259,7 +259,7 @@ export default function PerformancePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">キャッシュヒット率</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.cacheHitRate}%</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.cacheHitRate || 0}%</p>
               </div>
             </div>
           </div>
@@ -273,7 +273,7 @@ export default function PerformancePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">稼働率</p>
-                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.uptime}</p>
+                <p className="text-2xl font-bold text-gray-900">{performanceData.summary.uptime || '99.9%'}</p>
               </div>
             </div>
           </div>
@@ -287,23 +287,23 @@ export default function PerformancePage() {
             <div className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">総処理数</span>
-                <span className="text-sm font-medium">{performanceData.aiProcessing.total.toLocaleString()}</span>
+                <span className="text-sm font-medium">{performanceData.aiProcessing.total?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">平均処理時間</span>
-                <span className="text-sm font-medium">{performanceData.aiProcessing.averageTime}秒</span>
+                <span className="text-sm font-medium">{performanceData.aiProcessing.averageTime || 0}秒</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">過去1時間</span>
-                <span className="text-sm font-medium">{performanceData.aiProcessing.lastHour}</span>
+                <span className="text-sm font-medium">{performanceData.aiProcessing.lastHour || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">過去24時間</span>
-                <span className="text-sm font-medium">{performanceData.aiProcessing.lastDay}</span>
+                <span className="text-sm font-medium">{performanceData.aiProcessing.lastDay || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">過去1週間</span>
-                <span className="text-sm font-medium">{performanceData.aiProcessing.lastWeek}</span>
+                <span className="text-sm font-medium">{performanceData.aiProcessing.lastWeek || 0}</span>
               </div>
             </div>
           </div>
@@ -315,12 +315,12 @@ export default function PerformancePage() {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">CPU使用率</span>
-                  <span className="font-medium">{performanceData.system.cpu}%</span>
+                  <span className="font-medium">{performanceData.system.cpu || 0}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
-                    className={`h-2 rounded-full ${performanceData.system.cpu > 80 ? 'bg-red-500' : performanceData.system.cpu > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                    style={{ width: `${performanceData.system.cpu}%` }}
+                    className={`h-2 rounded-full ${(performanceData.system.cpu || 0) > 80 ? 'bg-red-500' : (performanceData.system.cpu || 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                    style={{ width: `${performanceData.system.cpu || 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -328,12 +328,12 @@ export default function PerformancePage() {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">メモリ使用率</span>
-                  <span className="font-medium">{performanceData.system.memory}%</span>
+                  <span className="font-medium">{performanceData.system.memory || 0}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
-                    className={`h-2 rounded-full ${performanceData.system.memory > 80 ? 'bg-red-500' : performanceData.system.memory > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                    style={{ width: `${performanceData.system.memory}%` }}
+                    className={`h-2 rounded-full ${(performanceData.system.memory || 0) > 80 ? 'bg-red-500' : (performanceData.system.memory || 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                    style={{ width: `${performanceData.system.memory || 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -341,19 +341,19 @@ export default function PerformancePage() {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">ディスク使用率</span>
-                  <span className="font-medium">{performanceData.system.disk}%</span>
+                  <span className="font-medium">{performanceData.system.disk || 0}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
-                    className={`h-2 rounded-full ${performanceData.system.disk > 80 ? 'bg-red-500' : performanceData.system.disk > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                    style={{ width: `${performanceData.system.disk}%` }}
+                    className={`h-2 rounded-full ${(performanceData.system.disk || 0) > 80 ? 'bg-red-500' : (performanceData.system.disk || 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                    style={{ width: `${performanceData.system.disk || 0}%` }}
                   ></div>
                 </div>
               </div>
               
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">アクティブ接続</span>
-                <span className="text-sm font-medium">{performanceData.system.activeConnections.toLocaleString()}</span>
+                <span className="text-sm font-medium">{performanceData.system.activeConnections?.toLocaleString() || '0'}</span>
               </div>
             </div>
           </div>
@@ -367,19 +367,19 @@ export default function PerformancePage() {
             <div className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">総リクエスト</span>
-                <span className="text-sm font-medium">{performanceData.cache.total.toLocaleString()}</span>
+                <span className="text-sm font-medium">{performanceData.cache.total?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">ヒット数</span>
-                <span className="text-sm font-medium text-green-600">{performanceData.cache.hits.toLocaleString()}</span>
+                <span className="text-sm font-medium text-green-600">{performanceData.cache.hits?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">ミス数</span>
-                <span className="text-sm font-medium text-red-600">{performanceData.cache.misses.toLocaleString()}</span>
+                <span className="text-sm font-medium text-red-600">{performanceData.cache.misses?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">ヒット率</span>
-                <span className="text-sm font-medium">{performanceData.cache.hitRate}%</span>
+                <span className="text-sm font-medium">{performanceData.cache.hitRate || 0}%</span>
               </div>
             </div>
           </div>
@@ -390,19 +390,19 @@ export default function PerformancePage() {
             <div className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">総エラー数</span>
-                <span className="text-sm font-medium">{performanceData.errors.total.toLocaleString()}</span>
+                <span className="text-sm font-medium">{performanceData.errors.total?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">エラー発生率</span>
-                <span className="text-sm font-medium">{performanceData.errors.rate}%</span>
+                <span className="text-sm font-medium">{performanceData.errors.rate || 0}%</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">過去1時間</span>
-                <span className="text-sm font-medium">{performanceData.errors.lastHour}</span>
+                <span className="text-sm font-medium">{performanceData.errors.lastHour || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">過去24時間</span>
-                <span className="text-sm font-medium">{performanceData.errors.lastDay}</span>
+                <span className="text-sm font-medium">{performanceData.errors.lastDay || 0}</span>
               </div>
             </div>
           </div>

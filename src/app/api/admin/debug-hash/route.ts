@@ -113,4 +113,16 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function GET(request: NextRequest) {
+  const jwtSecret = process.env.JWT_SECRET
+  const adminJwtSecret = process.env.ADMIN_JWT_SECRET
+  
+  return NextResponse.json({
+    jwtSecret: jwtSecret ? `存在 (長さ: ${jwtSecret.length})` : '未設定',
+    adminJwtSecret: adminJwtSecret ? `存在 (長さ: ${adminJwtSecret.length})` : '未設定',
+    jwtSecretStart: jwtSecret ? jwtSecret.substring(0, 10) + '...' : 'なし',
+    adminJwtSecretStart: adminJwtSecret ? adminJwtSecret.substring(0, 10) + '...' : 'なし'
+  })
 } 

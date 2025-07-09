@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin } from '@/lib/supabase'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key'
+const JWT_SECRET = process.env.JWT_SECRET!
 const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24時間
 
 export async function POST(request: NextRequest) {
@@ -23,22 +18,32 @@ export async function POST(request: NextRequest) {
     }
 
     // 管理者ユーザーを取得
-    const { data: admin, error } = await supabase
+    console.log('管理者ユーザー検索開始:', { username })
+    const { data: admin, error } = await supabaseAdmin
       .from('admin_users')
       .select('*')
       .eq('username', username)
       .eq('is_active', true)
       .single()
 
+    console.log('管理者ユーザー検索結果:', { admin: admin ? 'あり' : 'なし', error })
+
     if (error || !admin) {
       console.log('管理者ユーザーが見つかりません:', { username, error })
       
       // デバッグ用：ユーザーが存在するかチェック
-      const { data: allAdmins, error: listError } = await supabase
+      const { data: allAdmins, error: listError } = await supabaseAdmin
         .from('admin_users')
         .select('username, is_active')
       
       console.log('全管理者ユーザー:', { allAdmins, listError })
+      
+      // デバッグ用：admin_usersテーブルの全件確認
+      const { data: allUsers, error: allUsersError } = await supabaseAdmin
+        .from('admin_users')
+        .select('*')
+        
+      console.log('全管理者詳細:', { count: allUsers?.length || 0, users: allUsers, error: allUsersError })
       
       return NextResponse.json(
         { error: 'ユーザー名またはパスワードが正しくありません' },
@@ -69,7 +74,7 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + SESSION_DURATION).toISOString()
 
     // セッションをDBに保存
-    const { error: sessionError } = await supabase
+    const { error: sessionError } = await supabaseAdmin
       .from('admin_sessions')
       .insert({
         admin_id: admin.id,
