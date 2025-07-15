@@ -258,155 +258,65 @@ async function getStoreInfo(storeId: string) {
   }
 }
 
-// キャプション・ハッシュタグ生成
-async function generateCaptionAndHashtags(openai: OpenAI, image: string, analysis: ImageAnalysisResult, storeInfo: any) {
-  const prompt = `
-この${analysis.foodType}の写真について、SNS投稿用のキャプションとハッシュタグを生成してください。
+// 統合コンテンツ生成（キャプション・ハッシュタグ・撮影アドバイス）- 最適化版
+async function generateContentAndAdvice(openai: OpenAI, image: string, analysis: ImageAnalysisResult, storeInfo: any) {
+  // 画像形式の検証
+  if (!isValidImageFormat(image)) {
+    console.error('無効な画像形式が検出されました。フォールバック処理を実行します。')
+    return generateFallbackContent(analysis, storeInfo)
+  }
 
-店舗情報：
-- 店舗名: ${storeInfo?.name || '未設定'}
-- 店舗説明: ${storeInfo?.store_description || '美味しい料理を提供するお店'}
-- 固定キャプション: ${storeInfo?.fixed_caption || ''}
-- 固定ハッシュタグ: ${storeInfo?.fixed_hashtags || ''}
-
-画像分析結果：
-- 料理の種類: ${analysis.foodType}
-- 適用した最適化: ${analysis.recommendedOptimizations.join(', ')}
-
-以下のJSON形式で回答してください：
-{
-  "caption": "魅力的なキャプション（絵文字含む、150文字以内）",
-  "hashtags": "関連ハッシュタグ（#で区切り、20個以内）"
-}
-
-キャプションの要件：
-- 料理の美味しさが伝わる表現
-- 店舗の特徴を活かした内容
-- SNS映えする絵文字を適度に使用
-- 食欲をそそる表現
-
-ハッシュタグの要件：
-- 料理名・食材・調理法関連
-- 店舗・地域関連
-- SNS人気タグ
-- 固定ハッシュタグを必ず含める
-`
-
+  // 3つのAPI呼び出しを並列実行（処理時間短縮）
+  const startTime = Date.now()
+  
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: image } }
-          ]
-        }
-      ],
-      max_tokens: 800,
-      temperature: 0.7
-    })
+    const [captionResult, hashtagsResult, adviceResult] = await Promise.all([
+      // キャプション生成（簡潔プロンプト）
+      generateCaptionOptimized(openai, image, analysis, storeInfo),
+      // ハッシュタグ生成（簡潔プロンプト）
+      generateHashtagsOptimized(openai, analysis, storeInfo),
+      // 撮影アドバイス生成（テキストのみ、画像不要）
+      generateAdviceOptimized(openai, analysis)
+    ])
 
-    const contentText = response.choices[0]?.message?.content
-    if (!contentText) {
-      throw new Error('キャプション生成結果を取得できませんでした')
-    }
-
-    // JSONを抽出
-    const jsonMatch = contentText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('キャプション生成結果のJSON形式が正しくありません')
-    }
-
-    const result = JSON.parse(jsonMatch[0])
+    console.log(`並列コンテンツ生成完了: ${Date.now() - startTime}ms`)
     
-    // 固定要素を追加
-    const finalCaption = storeInfo?.fixed_caption 
-      ? `${result.caption}\n\n${storeInfo.fixed_caption}`
-      : result.caption
-    
-    // ハッシュタグの重複排除処理
-    const generatedHashtags = result.hashtags
-      .split(/[\s\n]+/)
-      .map((tag: string) => tag.trim())
-      .filter((tag: string) => tag.startsWith('#') && tag.length > 1)
-    
-    const fixedHashtags = storeInfo?.fixed_hashtags
-      ? storeInfo.fixed_hashtags.split(/[\s\n]+/).map((tag: string) => tag.trim()).filter((tag: string) => tag.startsWith('#') && tag.length > 1)
-      : []
-    
-    // 重複排除して結合
-    const allHashtags = [...generatedHashtags]
-    fixedHashtags.forEach((tag: string) => {
-      if (!allHashtags.includes(tag)) {
-        allHashtags.push(tag)
-      }
-    })
-    
-    const finalHashtags = allHashtags.join(' ')
-
     return {
-      caption: finalCaption,
-      hashtags: finalHashtags
+      caption: captionResult,
+      hashtags: hashtagsResult,
+      photographyAdvice: adviceResult
     }
   } catch (error) {
-    console.error('キャプション生成エラー:', error)
-    // フォールバック
-    const fallbackHashtags = `#${analysis.foodType} #美味しい #グルメ #料理 #食べ物 #instafood #delicious #foodie #restaurant #yummy`
-    const fixedHashtags = storeInfo?.fixed_hashtags || ''
-    
-    return {
-      caption: `美味しい${analysis.foodType}をご用意しました！✨ 心を込めて作った一品です。ぜひお楽しみください😊`,
-      hashtags: `${fallbackHashtags} ${fixedHashtags}`.trim()
-    }
+    console.error('並列コンテンツ生成エラー:', error)
+    return generateFallbackContent(analysis, storeInfo)
   }
 }
 
-// 統合コンテンツ生成（キャプション・ハッシュタグ・撮影アドバイス）- 最適化版
-async function generateContentAndAdvice(openai: OpenAI, image: string, analysis: ImageAnalysisResult, storeInfo: any) {
-  const prompt = `
-この${analysis.foodType}の写真について、以下の内容を一度に生成してください：
-
-店舗情報：
-- 店舗名: ${storeInfo?.name || '未設定'}
-- 店舗説明: ${storeInfo?.store_description || '美味しい料理を提供するお店'}
-- 固定キャプション: ${storeInfo?.fixed_caption || ''}
-- 固定ハッシュタグ: ${storeInfo?.fixed_hashtags || ''}
-
-画像分析結果：
-- 料理の種類: ${analysis.foodType}
-- 構図の問題点: ${analysis.compositionIssues.join(', ')}
-- 照明の問題点: ${analysis.lightingIssues.join(', ')}
-- 色彩の問題点: ${analysis.colorIssues.join(', ')}
-- 背景の問題点: ${analysis.backgroundIssues.join(', ')}
-- 適用した最適化: ${analysis.recommendedOptimizations.join(', ')}
-
-以下のJSON形式で回答してください：
-{
-  "caption": "魅力的なキャプション（絵文字含む、150文字以内）",
-  "hashtags": "関連ハッシュタグ（#で区切り、20個以内）",
-  "photographyAdvice": "次回撮影時の具体的なアドバイス（3-5点、実践的な内容）"
+// 画像形式検証関数
+function isValidImageFormat(image: string): boolean {
+  try {
+    const header = image.substring(0, 50)
+    return header.includes('data:image/') && 
+           (header.includes('jpeg') || header.includes('jpg') || header.includes('png')) &&
+           header.includes('base64')
+  } catch (error) {
+    return false
+  }
 }
 
-要件：
-■ キャプション：
-- 【必須】画像分析結果の具体的な内容を反映（料理名・食材・見た目・特徴）
-- 【必須】店舗情報を活かした個性的な表現
-- 【表現】五感に訴える感覚的な描写（香り、食感、温度感など）
-- 【形式】SNS映えする絵文字を適度に使用、200-250文字程度（詳細で魅力的な表現）
+// フォールバック処理
+function generateFallbackContent(analysis: ImageAnalysisResult, storeInfo: any) {
+  return {
+    caption: `美味しそうな${analysis.foodType}をご用意しました🍽️ 心を込めて作りました✨`,
+    hashtags: `#${analysis.foodType} #美味しい #手作り #料理 #グルメ #instafood #foodie #yummy #delicious #foodstagram`,
+    photographyAdvice: '自然光での撮影、背景をシンプルに、料理を中心に配置することをお勧めします。'
+  }
+}
 
-■ ハッシュタグ：
-- 日本語ハッシュタグ：5つ（写真に写っている料理・食材・調理法・見た目を具体的に反映）
-- 英語ハッシュタグ：5つ（グローバル対応、SNS人気タグ）
-- 合計10個のハッシュタグを生成（固定ハッシュタグは後で追加）
-
-■ 撮影アドバイス：
-- 分析結果に基づく具体的な改善点
-- 実践しやすい内容
-- 各50文字以内で簡潔に
-`
-
+// キャプション生成（最適化版）
+async function generateCaptionOptimized(openai: OpenAI, image: string, analysis: ImageAnalysisResult, storeInfo: any) {
+  const prompt = `${analysis.foodType}のキャプションを生成。店舗: ${storeInfo?.name || ''}。150文字以内、絵文字含む。`
+  
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -419,64 +329,62 @@ async function generateContentAndAdvice(openai: OpenAI, image: string, analysis:
           ]
         }
       ],
-      max_tokens: 1200,
-      temperature: 0.7
+      max_tokens: 300,
+      temperature: 0.4
     })
 
-    const contentText = response.choices[0]?.message?.content
-    if (!contentText) {
-      throw new Error('コンテンツ生成結果を取得できませんでした')
-    }
-
-    // JSONを抽出
-    const jsonMatch = contentText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('コンテンツ生成結果のJSON形式が正しくありません')
-    }
-
-    const result = JSON.parse(jsonMatch[0])
+    const caption = response.choices[0]?.message?.content || `美味しそうな${analysis.foodType}をご用意しました🍽️`
     
-    // 固定要素を追加
-    const finalCaption = storeInfo?.fixed_caption 
-      ? `${result.caption}\n\n${storeInfo.fixed_caption}`
-      : result.caption
-    
-    // ハッシュタグの重複排除処理
-    const generatedHashtags = result.hashtags
-      .split(/[\s\n]+/)
-      .map((tag: string) => tag.trim())
-      .filter((tag: string) => tag.startsWith('#') && tag.length > 1)
-    
-    const fixedHashtags = storeInfo?.fixed_hashtags
-      ? storeInfo.fixed_hashtags.split(/[\s\n]+/).map((tag: string) => tag.trim()).filter((tag: string) => tag.startsWith('#') && tag.length > 1)
-      : []
-    
-    // 重複排除して結合
-    const allHashtags = [...generatedHashtags]
-    fixedHashtags.forEach((tag: string) => {
-      if (!allHashtags.includes(tag)) {
-        allHashtags.push(tag)
-      }
-    })
-    
-    const finalHashtags = allHashtags.join(' ')
-
-    return {
-      caption: finalCaption,
-      hashtags: finalHashtags,
-      photographyAdvice: result.photographyAdvice || '自然光での撮影、背景をシンプルに、料理を中心に配置することをお勧めします。'
-    }
+    return storeInfo?.fixed_caption 
+      ? `${caption}\n\n${storeInfo.fixed_caption}`
+      : caption
   } catch (error) {
-    console.error('統合コンテンツ生成エラー:', error)
-    // フォールバック
-    const fallbackHashtags = `#${analysis.foodType} #美味しい #グルメ #料理 #食べ物 #instafood #delicious #foodie #restaurant #yummy`
-    const fixedHashtags = storeInfo?.fixed_hashtags || ''
+    console.error('キャプション生成エラー:', error)
+    return `美味しそうな${analysis.foodType}をご用意しました🍽️ 心を込めて作りました✨`
+  }
+}
+
+// ハッシュタグ生成（最適化版）
+async function generateHashtagsOptimized(openai: OpenAI, analysis: ImageAnalysisResult, storeInfo: any) {
+  const prompt = `${analysis.foodType}のハッシュタグを10個生成。日本語5個、英語5個。`
+  
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 200,
+      temperature: 0.3
+    })
+
+    const generatedTags = response.choices[0]?.message?.content || 
+      `#${analysis.foodType} #美味しい #手作り #料理 #グルメ #instafood #foodie #yummy #delicious #foodstagram`
     
-    return {
-      caption: `美味しい${analysis.foodType}をご用意しました！✨ 心を込めて作った一品です。ぜひお楽しみください😊`,
-      hashtags: `${fallbackHashtags} ${fixedHashtags}`.trim(),
-      photographyAdvice: '自然光での撮影、背景をシンプルに、料理を中心に配置することをお勧めします。'
-    }
+    // 固定ハッシュタグを追加
+    const fixedTags = storeInfo?.fixed_hashtags || ''
+    return `${generatedTags} ${fixedTags}`.trim()
+  } catch (error) {
+    console.error('ハッシュタグ生成エラー:', error)
+    return `#${analysis.foodType} #美味しい #手作り #料理 #グルメ #instafood #foodie #yummy #delicious #foodstagram`
+  }
+}
+
+// 撮影アドバイス生成（最適化版）
+async function generateAdviceOptimized(openai: OpenAI, analysis: ImageAnalysisResult) {
+  const prompt = `${analysis.foodType}の撮影アドバイスを3点、各30文字以内。問題点: ${analysis.compositionIssues.join(', ')}`
+  
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 150,
+      temperature: 0.3
+    })
+
+    return response.choices[0]?.message?.content || 
+      '自然光での撮影、背景をシンプルに、料理を中心に配置することをお勧めします。'
+  } catch (error) {
+    console.error('撮影アドバイス生成エラー:', error)
+    return '自然光での撮影、背景をシンプルに、料理を中心に配置することをお勧めします。'
   }
 }
 
@@ -510,36 +418,19 @@ async function generatePhotographyAdvice(openai: OpenAI, analysis: ImageAnalysis
   }
 }
 
-// SNS向け画像分析
+// SNS向け画像分析（最適化版）
 async function analyzeImageForInstagram(openai: OpenAI, image: string): Promise<ImageAnalysisResult> {
-  const analysisPrompt = `
-この料理写真を詳細に分析し、SNS用キャプション・ハッシュタグ生成に必要な情報を収集してください。
-
-【分析要件】
-1. 料理の正確な名前・種類（具体的に）
-2. 写真で確認できる食材・調理法・見た目の特徴
-3. 色彩・視覚的魅力・盛り付けの詳細
-4. SNS最適化のための問題点と改善案
-
-【JSON出力形式】
+  const analysisPrompt = `この料理写真を分析してください。
+  
+JSON形式で回答：
 {
-  "foodType": "具体的な料理名（例：ハンバーグステーキ、カルボナーラ等）",
-  "compositionIssues": ["構図の問題点を具体的に"],
-  "lightingIssues": ["照明の問題点を具体的に"], 
-  "colorIssues": ["色彩の問題点を具体的に"],
-  "backgroundIssues": ["背景の問題点を具体的に"],
+  "foodType": "具体的な料理名",
+  "compositionIssues": ["構図の問題点"],
+  "lightingIssues": ["照明の問題点"], 
+  "colorIssues": ["色彩の問題点"],
+  "backgroundIssues": ["背景の問題点"],
   "recommendedOptimizations": ["照明最適化", "色彩強調", "背景ぼかし", "構図調整", "テクスチャ強調"]
-}
-
-【重要】foodTypeは「料理」「パスタ」等の一般的な表現ではなく、写真から判断できる具体的な料理名を記載してください。
-食材、調理状態、見た目の特徴も詳細に含めて分析してください。
-
-SNS映えする料理写真の基準：
-- 自然光または暖かい照明で美味しそうに見える
-- 背景がすっきりして料理が映える
-- 料理が中心に配置され構図が整っている
-- 色彩が鮮やかで食欲をそそる
-- 食材のテクスチャや質感が美しく表現されている`
+}`
 
   try {
     const response = await openai.chat.completions.create({
@@ -553,8 +444,8 @@ SNS映えする料理写真の基準：
           ]
         }
       ],
-      max_tokens: 1000,
-      temperature: 0.3
+      max_tokens: 600,
+      temperature: 0.2
     })
 
     const analysisText = response.choices[0]?.message?.content
@@ -583,65 +474,27 @@ SNS映えする料理写真の基準：
   }
 }
 
-// 分析結果に基づく最適化適用（実際の画像処理）
+// 分析結果に基づく最適化適用（実際の画像処理）- 統合最適化版
 async function applyOptimizations(openai: OpenAI, image: string, analysis: ImageAnalysisResult): Promise<string> {
   try {
-    console.log('画像最適化開始:', analysis.recommendedOptimizations)
+    console.log('統合画像最適化開始:', analysis.recommendedOptimizations)
+    const startTime = Date.now()
     
-    // 推奨最適化に基づいて処理を適用
-    let processedImage = image
+    // 1つのSharp処理パイプラインで全ての最適化を適用
+    const processedImage = await processImageWithSharp(image, (sharp) => {
+      return sharp
+        .modulate({ brightness: 1.1, saturation: 1.2 })  // 照明・色彩最適化
+        .gamma(1.1)                                       // ガンマ補正
+        .linear(1.15, 0)                                  // コントラスト調整
+        .sharpen({ sigma: 1.2 })                          // テクスチャ強調
+        .trim({ threshold: 10 })                          // 構図調整
+    })
     
-    for (const optimization of analysis.recommendedOptimizations) {
-      switch (optimization) {
-        case '照明最適化':
-          processedImage = await processImageWithSharp(processedImage, (sharp) => 
-            sharp.modulate({ brightness: getOptimizationStrength('brightness', analysis.recommendedOptimizations) })
-                 .linear(getOptimizationStrength('contrast', analysis.recommendedOptimizations), 0)
-          )
-          break
-          
-        case '色彩強調':
-          processedImage = await processImageWithSharp(processedImage, (sharp) => 
-            sharp.modulate({ saturation: getOptimizationStrength('saturation', analysis.recommendedOptimizations) })
-                 .gamma(getOptimizationStrength('gamma', analysis.recommendedOptimizations))
-          )
-          break
-          
-        case '背景ぼかし':
-          // 背景ぼかしは複雑なので、基本的なシャープネス強調で代替
-          processedImage = await processImageWithSharp(processedImage, (sharp) => 
-            sharp.sharpen({ sigma: 1.2, m1: 1.0, m2: 0.2 })
-          )
-          break
-          
-        case '構図調整':
-          // 構図調整は軽微なトリミングで代替
-          processedImage = await processImageWithSharp(processedImage, (sharp) => 
-            sharp.trim({ threshold: 10 })
-          )
-          break
-          
-        case 'テクスチャ強調':
-          processedImage = await processImageWithSharp(processedImage, (sharp) => 
-            sharp.sharpen({ sigma: getOptimizationStrength('sharpen', analysis.recommendedOptimizations) })
-                 .linear(getOptimizationStrength('contrast', analysis.recommendedOptimizations), 0)
-          )
-          break
-          
-        default:
-          // その他の最適化は基本的な色調補正を適用
-          processedImage = await processImageWithSharp(processedImage, (sharp) => 
-            sharp.modulate({ brightness: 1.05, saturation: 1.1 })
-          )
-          break
-      }
-    }
-    
-    console.log('画像最適化完了')
+    console.log(`統合画像最適化完了: ${Date.now() - startTime}ms`)
     return processedImage
     
   } catch (error) {
-    console.error('画像最適化エラー:', error)
+    console.error('統合画像最適化エラー:', error)
     // エラーの場合は元画像を返す
     return image
   }
