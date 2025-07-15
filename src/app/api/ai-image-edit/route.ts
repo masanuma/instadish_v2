@@ -346,7 +346,11 @@ async function generateCaptionOptimized(openai: OpenAI, image: string, analysis:
 
 // ハッシュタグ生成（最適化版）
 async function generateHashtagsOptimized(openai: OpenAI, analysis: ImageAnalysisResult, storeInfo: any) {
-  const prompt = `${analysis.foodType}のハッシュタグを10個生成。日本語5個、英語5個。`
+  const prompt = `${analysis.foodType}のハッシュタグを正確に10個生成してください。
+  
+出力形式：#タグ1 #タグ2 #タグ3 #タグ4 #タグ5 #タグ6 #タグ7 #タグ8 #タグ9 #タグ10
+
+日本語5個、英語5個。説明文は不要です。ハッシュタグのみを出力してください。`
   
   try {
     const response = await openai.chat.completions.create({
@@ -356,12 +360,35 @@ async function generateHashtagsOptimized(openai: OpenAI, analysis: ImageAnalysis
       temperature: 0.3
     })
 
-    const generatedTags = response.choices[0]?.message?.content || 
-      `#${analysis.foodType} #美味しい #手作り #料理 #グルメ #instafood #foodie #yummy #delicious #foodstagram`
+    const generatedContent = response.choices[0]?.message?.content || ''
     
-    // 固定ハッシュタグを追加
-    const fixedTags = storeInfo?.fixed_hashtags || ''
-    return `${generatedTags} ${fixedTags}`.trim()
+    // ハッシュタグのみを抽出（#で始まる文字列のみ）
+    const hashtagPattern = /#[a-zA-Z0-9ぁ-んァ-ヶー一-龠]+/g
+    const extractedTags = generatedContent.match(hashtagPattern) || []
+    
+    // 基本ハッシュタグ（フォールバック）
+    const fallbackTags = [
+      `#${analysis.foodType}`, '#美味しい', '#手作り', '#料理', '#グルメ', 
+      '#instafood', '#foodie', '#yummy', '#delicious', '#foodstagram'
+    ]
+    
+    // 生成されたタグを使用、足りない場合はフォールバックで補完
+    const finalTags = extractedTags.length >= 5 ? extractedTags.slice(0, 10) : fallbackTags
+    
+         // 固定ハッシュタグを追加
+     const fixedTags = storeInfo?.fixed_hashtags || ''
+     const fixedTagsArray = fixedTags.split(/\s+/).filter((tag: string) => tag.startsWith('#'))
+    
+         // 重複を避けて結合
+     const allTags = [...finalTags]
+     fixedTagsArray.forEach((tag: string) => {
+       if (!allTags.includes(tag)) {
+         allTags.push(tag)
+       }
+     })
+    
+    return allTags.join(' ')
+    
   } catch (error) {
     console.error('ハッシュタグ生成エラー:', error)
     return `#${analysis.foodType} #美味しい #手作り #料理 #グルメ #instafood #foodie #yummy #delicious #foodstagram`
