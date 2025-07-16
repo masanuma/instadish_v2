@@ -17,6 +17,7 @@ export default function RegisterPage() {
     fixedHashtags: '',
     storeDescription: ''
   })
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -83,6 +84,12 @@ export default function RegisterPage() {
     // パスワード確認チェック
     if (formData.password !== formData.confirmPassword) {
       setError('パスワードが一致しません')
+      return false
+    }
+
+    // 利用規約同意チェック
+    if (!agreedToTerms) {
+      setError('利用規約とプライバシーポリシーに同意してください')
       return false
     }
 
@@ -342,9 +349,34 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* 利用規約同意チェックボックス */}
+          <div className="flex items-start space-x-2 p-4 bg-gray-50 rounded-md">
+            <input
+              type="checkbox"
+              id="agreedToTerms"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+            />
+            <label htmlFor="agreedToTerms" className="text-sm text-gray-700">
+              <Link href="/terms" target="_blank" className="text-orange-600 hover:text-orange-700 underline">
+                利用規約
+              </Link>
+              、
+              <Link href="/privacy" target="_blank" className="text-orange-600 hover:text-orange-700 underline">
+                プライバシーポリシー
+              </Link>
+              、
+              <Link href="/tokusho" target="_blank" className="text-orange-600 hover:text-orange-700 underline">
+                販売条件・返金ポリシー
+              </Link>
+              に同意します。
+            </label>
+          </div>
+
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !agreedToTerms}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'アカウント作成中...' : 'アカウントを作成'}
