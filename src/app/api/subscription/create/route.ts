@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       success: true,
       subscriptionId: result.subscriptionId,
       clientSecret: result.clientSecret,
-      message: '2週間の無料トライアルが開始されました！'
+      message: '30日間の無料トライアルが開始されました！'
     })
 
   } catch (error) {

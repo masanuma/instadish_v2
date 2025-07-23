@@ -82,7 +82,7 @@ export async function createNewSubscription(
       })
       .eq('id', storeId)
 
-    // Stripeサブスクリプション作成（2週間無料トライアル付き）
+    // Stripeサブスクリプション作成（30日間無料トライアル付き）
     const stripeSubscription = await createSubscription(
       customer.id,
       plan.stripe_price_id,

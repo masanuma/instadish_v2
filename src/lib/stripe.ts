@@ -16,15 +16,15 @@ export const PRICES = {
 }
 
 // 無料トライアル期間（日数）
-export const FREE_TRIAL_DAYS = 14
+export const FREE_TRIAL_DAYS = 30
 
 // Stripeの製品・価格ID（実際のStripeダッシュボードで設定後に更新）
 export const STRIPE_PRODUCT_IDS = {
-  BASIC_PLAN: 'prod_SZJwAexyi9FVQg',
+  BASIC_PLAN: 'prod_Sa1QWFFj50LPcA',
 }
 
 export const STRIPE_PRICE_IDS = {
-  BASIC_MONTHLY: 'price_1ReBIuFaHkt2FbdwJgctzXU1',
+  BASIC_MONTHLY: 'price_1RerBjFbamwRRtCdjJc33VAA',
 }
 
 // Webhookエンドポイントシークレット
