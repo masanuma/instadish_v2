@@ -34,24 +34,46 @@ export async function POST(request: NextRequest) {
 
     // パラメータ取得
     const { userId, newPassword } = await request.json();
+    console.log('パスワード更新リクエスト:', { userId, passwordLength: newPassword?.length });
+    
     if (!userId || !newPassword) {
       return NextResponse.json({ error: 'userIdとnewPasswordが必要です' }, { status: 400 });
     }
 
+    // 店舗の存在確認
+    const { data: store, error: storeCheckError } = await supabase!
+      .from('stores')
+      .select('id, store_code, name')
+      .eq('id', userId)
+      .single();
+
+    if (storeCheckError || !store) {
+      console.error('店舗が見つかりません:', { userId, error: storeCheckError });
+      return NextResponse.json({ error: '店舗が見つかりません' }, { status: 404 });
+    }
+
+    console.log('対象店舗:', store);
+
     // パスワードハッシュ化
     const hash = await bcrypt.hash(newPassword, 10);
+    console.log('パスワードハッシュ生成完了:', { hashLength: hash.length });
 
-    // DB更新
+    // DB更新（storesテーブルに修正）
     const { error } = await supabase!
-      .from('users')
+      .from('stores')
       .update({ password_hash: hash })
       .eq('id', userId);
 
     if (error) {
+      console.error('パスワード更新エラー:', error);
       return NextResponse.json({ error: 'パスワード更新に失敗しました', detail: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    console.log('パスワード更新成功:', { userId, storeName: store.name });
+    return NextResponse.json({ 
+      success: true, 
+      message: `店舗「${store.name}」のパスワードを更新しました` 
+    });
   } catch (e) {
     return NextResponse.json({ error: 'サーバーエラー', detail: String(e) }, { status: 500 });
   }

@@ -610,14 +610,28 @@ export default function Home() {
                   
                   {/* 処理中表示 */}
                   {isInstagramOptimizing && (
-                    <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md mb-4">
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
-                        SNS最適化中...
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 text-blue-700 px-4 py-4 rounded-lg mb-4 shadow-sm">
+                      <div className="flex items-center mb-2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700 mr-3"></div>
+                        <span className="font-semibold">SNS最適化中...</span>
                       </div>
-                      <p className="text-sm mt-1">
-                        処理に60秒ほどかかる場合があります
-                      </p>
+                      <div className="space-y-2 text-sm">
+                        <p className="flex items-center">
+                          <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                          AI画像分析・最適化処理
+                        </p>
+                        <p className="flex items-center">
+                          <span className="w-2 h-2 bg-yellow-400 rounded-full mr-2 animate-pulse"></span>
+                          品質チェック・白飛び検出
+                        </p>
+                        <p className="flex items-center">
+                          <span className="w-2 h-2 bg-purple-400 rounded-full mr-2 animate-pulse"></span>
+                          キャプション・ハッシュタグ生成
+                        </p>
+                        <p className="text-xs text-blue-600 mt-3 italic">
+                          💡 最高品質の結果をお届けするため、AIが自動で品質チェックを実行しています
+                        </p>
+                      </div>
                     </div>
                   )}
                   

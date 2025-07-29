@@ -542,80 +542,130 @@ export default function AdminDashboard() {
                   const daysLeft = getDaysLeft(subscription)
                   
                   return (
-                    <tr key={store.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{store.name}</div>
-                          <div className="text-sm text-gray-500">{store.store_code}</div>
-                          <div className="text-sm text-gray-500">{store.email}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {getStatusBadge(subscription)}
-                      </td>
-                      <td className="px-6 py-4">
-                        {daysLeft !== null ? (
-                          <span className={`text-sm ${daysLeft <= 7 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                            {daysLeft}日
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(store.created_at).toLocaleDateString('ja-JP')}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedStore(store)
-                              setShowStoreModal(true)
-                            }}
-                            className="text-blue-600 hover:text-blue-900 text-sm"
-                          >
-                            詳細
-                          </button>
-                          {subscription && subscription.status === 'trialing' && (
-                            <button
-                              onClick={() => handleStoreAction(store.id, 'extend_trial', 7)}
-                              className="text-green-600 hover:text-green-900 text-sm"
-                            >
-                              7日延長
-                            </button>
+                    <React.Fragment key={store.id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{store.name}</div>
+                            <div className="text-sm text-gray-500">{store.store_code}</div>
+                            <div className="text-sm text-gray-500">{store.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {getStatusBadge(subscription)}
+                        </td>
+                        <td className="px-6 py-4">
+                          {daysLeft !== null ? (
+                            <span className={`text-sm ${daysLeft <= 7 ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                              {daysLeft}日
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
                           )}
-                          {subscription && subscription.status === 'active' && (
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {new Date(store.created_at).toLocaleDateString('ja-JP')}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-2">
                             <button
-                              onClick={() => handleStoreAction(store.id, 'cancel_subscription')}
-                              className="text-red-600 hover:text-red-900 text-sm"
+                              onClick={() => {
+                                setSelectedStore(store)
+                                setShowStoreModal(true)
+                              }}
+                              className="text-blue-600 hover:text-blue-900 text-sm"
                             >
-                              停止
+                              詳細
                             </button>
-                          )}
-                          {subscription && subscription.status === 'canceled' && (
+                            {subscription && subscription.status === 'trialing' && (
+                              <button
+                                onClick={() => handleStoreAction(store.id, 'extend_trial', 7)}
+                                className="text-green-600 hover:text-green-900 text-sm"
+                              >
+                                7日延長
+                              </button>
+                            )}
+                            {subscription && subscription.status === 'active' && (
+                              <button
+                                onClick={() => handleStoreAction(store.id, 'cancel_subscription')}
+                                className="text-red-600 hover:text-red-900 text-sm"
+                              >
+                                停止
+                              </button>
+                            )}
+                            {subscription && subscription.status === 'canceled' && (
+                              <button
+                                onClick={() => handleStoreAction(store.id, 'activate_subscription')}
+                                className="text-green-600 hover:text-green-900 text-sm"
+                              >
+                                再開
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleStoreAction(store.id, 'activate_subscription')}
-                              className="text-green-600 hover:text-green-900 text-sm"
+                              onClick={() => {
+                                setShowPasswordForm(store.id)
+                                setNewPassword('')
+                                setTimeout(() => passwordInputRef.current?.focus(), 100)
+                              }}
+                              className="text-purple-600 hover:text-purple-900 text-sm"
+                              title="店舗のパスワードを強制更新"
                             >
-                              再開
+                              パスワード更新
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteStore(store.id)}
-                            className="text-red-500 hover:underline ml-2"
-                          >
-                            削除
-                          </button>
-                          {showPasswordForm === store.id && (
-                            <div className="mt-2 flex">
-                              <input type="password" ref={passwordInputRef} value={newPassword} onChange={e => setNewPassword(e.target.value)} className="border px-2 py-1 mr-2" placeholder="新パスワード" />
-                              <button onClick={() => handleUpdatePassword(store.id)} className="bg-blue-500 text-white px-3 py-1 rounded">更新</button>
-                              <button onClick={() => { setShowPasswordForm(null); setNewPassword(''); }} className="ml-2 text-gray-500">キャンセル</button>
+                            <button
+                              onClick={() => handleDeleteStore(store.id)}
+                              className="text-red-500 hover:underline ml-2 text-sm"
+                            >
+                              削除
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {showPasswordForm === store.id && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-4 bg-gray-50">
+                            <div className="p-4 bg-white rounded-lg border border-gray-200">
+                              <div className="text-sm font-medium text-gray-700 mb-3">
+                                🔑 店舗「{store.name}」のパスワード更新
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <input 
+                                  type="password" 
+                                  ref={passwordInputRef} 
+                                  value={newPassword} 
+                                  onChange={e => setNewPassword(e.target.value)} 
+                                  className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1 max-w-xs" 
+                                  placeholder="新しいパスワードを入力" 
+                                  minLength={6}
+                                />
+                                <button 
+                                  onClick={() => handleUpdatePassword(store.id)} 
+                                  disabled={!newPassword || newPassword.length < 6}
+                                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                >
+                                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2v6a2 2 0 01-2 2H7a3 3 0 01-3-3V9a2 2 0 012-2m0 0V7a2 2 0 012-2h4zm-5 15v-5a2 2 0 010-4h1m0 0V7a2 2 0 012-2h3a2 2 0 012 2v3m-6 0a2 2 0 100-4h1a2 2 0 000 4h-1z" />
+                                  </svg>
+                                  パスワード更新
+                                </button>
+                                <button 
+                                  onClick={() => { 
+                                    setShowPasswordForm(null); 
+                                    setNewPassword(''); 
+                                  }} 
+                                  className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
+                                >
+                                  キャンセル
+                                </button>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-2">
+                                ※ パスワードは6文字以上で設定してください
+                              </p>
                             </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   )
                 })}
               </tbody>

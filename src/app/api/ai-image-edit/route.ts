@@ -501,23 +501,119 @@ JSON形式で回答：
   }
 }
 
-// 分析結果に基づく最適化適用（実際の画像処理）- 統合最適化版
-async function applyOptimizations(openai: OpenAI, image: string, analysis: ImageAnalysisResult): Promise<string> {
+// AI品質チェック結果の型定義
+interface QualityCheckResult {
+  needsReprocessing: boolean
+  issues: string[]
+  suggestion?: string
+}
+
+// AI品質チェック機能
+async function performQualityCheck(openai: OpenAI, processedImage: string): Promise<QualityCheckResult> {
   try {
-    console.log('統合画像最適化開始:', analysis.recommendedOptimizations)
+    console.log('AI品質チェック開始')
     const startTime = Date.now()
     
-    // 1つのSharp処理パイプラインで全ての最適化を適用
-    const processedImage = await processImageWithSharp(image, (sharp) => {
-      return sharp
-        .modulate({ brightness: 1.1, saturation: 1.2 })  // 照明・色彩最適化
-        .gamma(1.1)                                       // ガンマ補正
-        .linear(1.15, 0)                                  // コントラスト調整
-        .sharpen({ sigma: 1.2 })                          // テクスチャ強調
-        .trim({ threshold: 10 })                          // 構図調整
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{
+        role: "user", 
+        content: [
+          { 
+            type: "text", 
+            text: `この処理済み料理写真の品質を判定してください。以下の問題がないかチェック：
+            1. 白飛び（明るすぎて詳細が失われている部分）
+            2. 黒つぶれ（暗すぎて詳細が見えない部分）  
+            3. 不自然な色調（現実離れした色合い）
+            4. SNSで魅力的に見えるか
+            
+            JSON形式で回答：{"needsReprocessing": true/false, "issues": ["問題点1", "問題点2"], "suggestion": "改善提案"}
+            問題がなければneedsReprocessing: false、issuesは空配列で返してください。` 
+          },
+          { type: "image_url", image_url: { url: processedImage } }
+        ]
+      }],
+      max_tokens: 300,
+      temperature: 0.3
     })
     
-    console.log(`統合画像最適化完了: ${Date.now() - startTime}ms`)
+    const content = response.choices[0]?.message?.content || '{"needsReprocessing": false, "issues": []}'
+    const result = JSON.parse(content)
+    
+    console.log(`AI品質チェック完了: ${Date.now() - startTime}ms`, result)
+    return result
+    
+  } catch (error) {
+    console.error('AI品質チェックエラー:', error)
+    // エラーの場合は品質OK扱いで処理続行
+    return { needsReprocessing: false, issues: [] }
+  }
+}
+
+// 品質保証付き画像処理
+async function processImageWithQualityAssurance(openai: OpenAI, image: string, analysis: ImageAnalysisResult): Promise<string> {
+  const maxRetries = 3
+  const strengthVariations = [
+    { brightness: 1.05, saturation: 1.1, gamma: 1.05, contrast: 1.1 },  // 弱め
+    { brightness: 1.1, saturation: 1.2, gamma: 1.1, contrast: 1.15 },   // 標準
+    { brightness: 1.08, saturation: 1.15, gamma: 1.08, contrast: 1.12 }  // 中間
+  ]
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`品質保証付き処理: 試行${attempt + 1}回目`)
+      const params = strengthVariations[attempt]
+      
+      // 画像処理パラメータを調整して処理
+      const processedImage = await processImageWithSharp(image, (sharp) => {
+        return sharp
+          .modulate({ brightness: params.brightness, saturation: params.saturation })
+          .gamma(params.gamma)
+          .linear(params.contrast, 0)
+          .sharpen({ sigma: 1.2 })
+          .trim({ threshold: 10 })
+      })
+      
+      // AI品質チェック
+      const qualityCheck = await performQualityCheck(openai, processedImage)
+      
+      if (!qualityCheck.needsReprocessing) {
+        console.log(`品質チェック合格: 試行${attempt + 1}回目`)
+        return processedImage
+      }
+      
+      console.log(`品質チェック不合格: 試行${attempt + 1}回目`, {
+        issues: qualityCheck.issues,
+        suggestion: qualityCheck.suggestion
+      })
+      
+    } catch (error) {
+      console.error(`品質保証処理エラー（試行${attempt + 1}）:`, error)
+    }
+  }
+  
+  // 最大試行回数に達した場合は標準パラメータで最終処理
+  console.log('品質チェック: 最大試行回数に達しました。標準処理で完了します。')
+  return await processImageWithSharp(image, (sharp) => {
+    return sharp
+      .modulate({ brightness: 1.1, saturation: 1.2 })
+      .gamma(1.1)
+      .linear(1.15, 0)
+      .sharpen({ sigma: 1.2 })
+      .trim({ threshold: 10 })
+  })
+}
+
+// 分析結果に基づく最適化適用（品質保証版）- 統合最適化版
+async function applyOptimizations(openai: OpenAI, image: string, analysis: ImageAnalysisResult): Promise<string> {
+  try {
+    console.log('品質保証付き統合画像最適化開始:', analysis.recommendedOptimizations)
+    const startTime = Date.now()
+    
+    // 品質保証付き処理を実行
+    const processedImage = await processImageWithQualityAssurance(openai, image, analysis)
+    
+    console.log(`品質保証付き統合画像最適化完了: ${Date.now() - startTime}ms`)
     return processedImage
     
   } catch (error) {

@@ -14,6 +14,13 @@ import sharp from 'sharp'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+// AI品質チェック結果の型定義
+interface QualityCheckResult {
+  needsReprocessing: boolean
+  issues: string[]
+  suggestion?: string
+}
+
 // エフェクト強度の設定（5段階に拡張）
 const EFFECT_PROMPTS = {
   'very-weak': 'minimal and ultra-natural enhancement, barely noticeable',
@@ -179,6 +186,84 @@ async function processImageWithSharp(imageBase64: string, effectStrength: string
     // エラーの場合は元画像を返す
     return imageBase64
   }
+}
+
+// AI品質チェック機能
+async function performQualityCheck(openai: OpenAI, processedImage: string): Promise<QualityCheckResult> {
+  try {
+    console.log('AI品質チェック開始')
+    const startTime = Date.now()
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{
+        role: "user", 
+        content: [
+          { 
+            type: "text", 
+            text: `この処理済み料理写真の品質を判定してください。以下の問題がないかチェック：
+            1. 白飛び（明るすぎて詳細が失われている部分）
+            2. 黒つぶれ（暗すぎて詳細が見えない部分）  
+            3. 不自然な色調（現実離れした色合い）
+            4. SNSで魅力的に見えるか
+            
+            JSON形式で回答：{"needsReprocessing": true/false, "issues": ["問題点1", "問題点2"], "suggestion": "改善提案"}
+            問題がなければneedsReprocessing: false、issuesは空配列で返してください。` 
+          },
+          { type: "image_url", image_url: { url: processedImage } }
+        ]
+      }],
+      max_tokens: 300,
+      temperature: 0.3
+    })
+    
+    const content = response.choices[0]?.message?.content || '{"needsReprocessing": false, "issues": []}'
+    const result = JSON.parse(content)
+    
+    console.log(`AI品質チェック完了: ${Date.now() - startTime}ms`, result)
+    return result
+    
+  } catch (error) {
+    console.error('AI品質チェックエラー:', error)
+    // エラーの場合は品質OK扱いで処理続行
+    return { needsReprocessing: false, issues: [] }
+  }
+}
+
+// 品質保証付きSharp処理
+async function processImageWithQualityAssurance(openai: OpenAI, imageBase64: string, effectStrength: string): Promise<string> {
+  const maxRetries = 3
+  const strengthVariations = ['weak', effectStrength, 'normal'] // 異なる強度で再試行
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`品質保証付きSharp処理: 試行${attempt + 1}回目`)
+      const currentStrength = attempt < strengthVariations.length ? strengthVariations[attempt] : effectStrength
+      
+      // 通常のSharp処理を実行
+      const processedImage = await processImageWithSharp(imageBase64, currentStrength)
+      
+      // AI品質チェック
+      const qualityCheck = await performQualityCheck(openai, processedImage)
+      
+      if (!qualityCheck.needsReprocessing) {
+        console.log(`品質チェック合格: 試行${attempt + 1}回目`)
+        return processedImage
+      }
+      
+      console.log(`品質チェック不合格: 試行${attempt + 1}回目`, {
+        issues: qualityCheck.issues,
+        suggestion: qualityCheck.suggestion
+      })
+      
+    } catch (error) {
+      console.error(`品質保証処理エラー（試行${attempt + 1}）:`, error)
+    }
+  }
+  
+  // 最大試行回数に達した場合は標準処理で完了
+  console.log('品質チェック: 最大試行回数に達しました。標準処理で完了します。')
+  return await processImageWithSharp(imageBase64, effectStrength)
 }
 
 // エフェクト強度に応じた処理パラメータを取得
@@ -381,9 +466,9 @@ export async function POST(request: NextRequest) {
         })
       : Promise.resolve({ choices: [{ message: { content: `${session.name || '未設定'}の美味しそうな料理写真` } }] })
 
-    // Sharp.js画像処理を並列実行用プロミス作成
-    const sharpProcessingPromise = processImageWithSharp(image, effectStrength).catch(error => {
-      console.error('Sharp.js並列処理失敗:', error)
+    // 品質保証付きSharp処理を並列実行用プロミス作成
+    const sharpProcessingPromise = processImageWithQualityAssurance(openai, image, effectStrength).catch(error => {
+      console.error('品質保証付きSharp並列処理失敗:', error)
       return image // エラー時は元画像を返す
     })
 
